@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="iso-8859-1" standalone="no"?>
+<AADC-Maneuver-List description="Session 1 - Querparken">
+	<AADC-Sector id="0">
+		<AADC-Maneuver id="0" action="cross_parking" />
+		<AADC-Maneuver id="1" action="pull_out_right" />
+	</AADC-Sector>
+</AADC-Maneuver-List>

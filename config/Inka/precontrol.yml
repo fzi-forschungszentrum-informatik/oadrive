@@ -1,0 +1,5 @@
+%YAML:1.0
+#steeringAngle=AfterAtan*atan(1/r*wheelbase*beforeAtan)+OffsetAtan
+AfterAtan: 0.9521
+beforeAtan: 1.448
+OffsetAtan: -0.02847

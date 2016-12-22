@@ -1,15 +1,12 @@
 // this is for emacs file handling -*- mode: c++; indent-tabs-mode: nil -*-
 
 // -- BEGIN LICENSE BLOCK ----------------------------------------------
-// This file is part of the Open Autonomous Driving Library.
-//
 // This program is free software licensed under the CDDL
 // (COMMON DEVELOPMENT AND DISTRIBUTION LICENSE Version 1.0).
-// You can find a copy of this license in LICENSE.txt in the top
+// You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2015 FZI Forschungszentrum Informatik, Karlsruhe, Germany
-
+// Â© Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -206,10 +203,117 @@ int main(int argc, char** argv)
     p.setPosition(0., 0.);
     t_backward.push_back(p);
 
-
     t_backward.toGnuplot("/tmp/raw_test4_2"); // raw data
     t_backward.shortcut();
     t_backward.toGnuplot("/tmp/res_test4_2"); // resulting data
   }
+
+  // Test trajectory serialisation:
+  {
+	Trajectory2d t1, t2;
+	ExtendedPose2d p1, p2;
+
+    p1.setPose( double(rand()) / double(RAND_MAX),
+			double(rand()) / double(RAND_MAX),
+			double(rand()) / double(RAND_MAX) );
+    t1.push_back(p1);
+    p1.setPose( double(rand()) / double(RAND_MAX),
+			double(rand()) / double(RAND_MAX),
+			double(rand()) / double(RAND_MAX) );
+    t1.push_back(p1);
+    p1.setPose( double(rand()) / double(RAND_MAX),
+			double(rand()) / double(RAND_MAX),
+			double(rand()) / double(RAND_MAX) );
+    t1.push_back(p1);
+
+	std::stringstream sstr;
+	sstr << p1;
+	sstr >> p2;
+
+	std::cout << "Pose generated: " << p1;
+	std::cout << "Pose seriealized and deserialized: " << p2;
+
+	sstr.str("");
+	sstr << t1;
+	//std::cout << "STREAM: " << sstr.str() << std::endl;
+	sstr >> t2;
+
+	std::cout << "Trajectory generated:\n" << t1;
+	std::cout << "Trajectory seriealized and deserialized:\n" << t2;
+  }
+
+  //test Trajectory post at distance from
+  {
+    Trajectory2d traj;
+    ExtendedPose2d p;
+    p.setPosition(-1,0);
+    traj.push_back(p);
+    p.setPosition(0,0);
+    traj.push_back(p);
+    p.setPosition(1,0);
+    traj.push_back(p);
+    p.setPosition(2,0);
+    traj.push_back(p);
+    p.setPosition(3,0);
+    traj.push_back(p);
+    p.setPosition(4,0);
+    traj.push_back(p);
+    ExtendedPose2d result;
+    traj.poseAtDistanceFrom(0,0.5,result);
+    bool test1 = result.getX() == -0.5;
+    traj.poseAtDistanceFrom(0,2,result);
+    bool test2 = result.getX() == 1;
+    traj.poseAtDistanceFrom(0,2.5,result);
+    bool test3 = result.getX() == 1.5;
+    traj.poseAtDistanceFrom(1,2.5,result);
+    bool test4 = result.getX() == 2.5;
+    traj.poseAtDistanceFrom(2,-1.1,result);
+    bool test5 = (result.getX() - (-0.1))<0.00001;
+    traj.poseAtDistanceFrom(5,-0.9,result);
+    bool test6 = result.getX() == 3.1;
+    if(test1&&test2&&test3&&test4&&test5&&test6)
+    {
+      std::cout<<"Test Trajectory pose at distance from passed"<<std::endl;
+    }
+    else
+    {
+      std::cout<<"Test Trajectory pose at distance from NOT passed"<<std::endl;
+      std::cout<<"The results are: "<<"Test1: "<<test1<<" Test2: "<<test2<<" Test3: "<<test3<<" Test4: "<<test4<<"Test5: "<<test5<<"Test6: "<<test6<<std::endl;
+    }
+
+
+  }
+  //test resampling sorry not automated...
+  {
+    Trajectory2d traj;
+    ExtendedPose2d p;
+    p.setPosition(-1,0);
+    traj.push_back(p);
+    p.setPosition(0,0);
+    traj.push_back(p);
+    p.setPosition(1,0);
+    traj.push_back(p);
+    p.setPosition(2,0);
+    traj.push_back(p);
+    p.setPosition(3,0);
+    traj.push_back(p);
+    p.setPosition(4,0);
+    traj.push_back(p);
+    p.setPosition(4.1,0);
+    traj.push_back(p);
+    p.setPosition(4.2,0);
+    traj.push_back(p);
+    p.setPosition(4.3,0);
+    traj.push_back(p);
+    p.setPosition(4.4,0);
+    traj.push_back(p);
+    p.setPosition(4.5,0);
+    traj.push_back(p);
+    traj.resample(0.3);
+    std::cout<<"Resampled Traj"<<std::endl<<traj;
+    std::cout<<"Distance should be 0.3m beteween the points except the last point"<<std::endl;
+  }
+
+
   return 0;
 }

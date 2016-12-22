@@ -1,14 +1,11 @@
 // this is for emacs file handling -*- mode: c++; indent-tabs-mode: nil -*-
 // -- BEGIN LICENSE BLOCK ----------------------------------------------
-// This file is part of the Open Autonomous Driving Library.
-//
 // This program is free software licensed under the CDDL
 // (COMMON DEVELOPMENT AND DISTRIBUTION LICENSE Version 1.0).
-// You can find a copy of this license in LICENSE.txt in the top
+// You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2015 FZI Forschungszentrum Informatik, Karlsruhe, Germany
-
+// Â© Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -166,6 +163,9 @@ public:
 
   //! Plot the velocity profile contained within the given \a trajectroy to \a filename
   static void plotTrajectoryVelocity(const Trajectory2d& trajectory, const std::string& filename);
+public:
+  // use a proper alignment when calling the constructor.
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 };
 

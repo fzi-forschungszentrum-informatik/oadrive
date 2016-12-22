@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="iso-8859-1" standalone="no"?>
+<AADC-Maneuver-List description="Session 4 - Zeitmessung">
+	<AADC-Sector id="0">
+		<AADC-Maneuver id="0" action="straight" />
+		<AADC-Maneuver id="1" action="straight" />
+		<AADC-Maneuver id="2" action="straight" />
+		<AADC-Maneuver id="3" action="straight" />
+		<AADC-Maneuver id="4" action="straight" />
+		<AADC-Maneuver id="5" action="straight" />
+		<AADC-Maneuver id="6" action="straight" />
+		<AADC-Maneuver id="7" action="straight" />
+		<AADC-Maneuver id="8" action="straight" />
+	</AADC-Sector>
+</AADC-Maneuver-List>

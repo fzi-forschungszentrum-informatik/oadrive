@@ -1,15 +1,12 @@
 // this is for emacs file handling -*- mode: c++; indent-tabs-mode: nil -*-
 
 // -- BEGIN LICENSE BLOCK ----------------------------------------------
-// This file is part of the Open Autonomous Driving Library.
-//
 // This program is free software licensed under the CDDL
 // (COMMON DEVELOPMENT AND DISTRIBUTION LICENSE Version 1.0).
-// You can find a copy of this license in LICENSE.txt in the top
+// You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2015 FZI Forschungszentrum Informatik, Karlsruhe, Germany
-
+// Â© Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -167,6 +164,29 @@ public:
    */
   void shortcut();
 
+  //! \brief simplify Simplify the trajectory with Ramer Douglas Peucker algorithm.
+  //! \param epsilon max distance to original trajectory in m
+  //! \note also see an wikipedia for detailed description
+  //! \link https://en.wikipedia.org/wiki/Ramer%E2%80%93Douglas%E2%80%93Peucker_algorithm
+  Trajectory2d simplify(double epsilon);
+
+  //! \brief lineDistance get squared distance from a line to 1 point
+  //! \param p1 point 1 of the line
+  //! \param p2 point 2 of the line
+  //! \param p3 test point
+  //! \return distance
+  //! \note inspired by http://psimpl.sourceforge.net/
+  double squaredLineDistance(const Position2d& p1, const Position2d& p2, const Position2d& p3);
+
+  bool poseAtDistanceFrom(std::size_t index, double distance,
+                                      ExtendedPose2d& pose) const;
+
+  void interpolateLinearWithDistance(double min_distance_between_positions, bool adopt_velocity);
+
+  void resample(const double sampling_distance);
+
+  bool resampleSanityCheck(const double sampling_distance);
+
 private:
 
   //! A flag to indicate that curvature is available
@@ -180,9 +200,20 @@ private:
    */
   bool m_is_forward_trajectory;
 
+  //! recursion for Ramer Douglas Peucker algorithm (also called "simplify")
+  void ramerDouglasPeuckerRecursion(Trajectory2d& trajectory, double epsilonSquared, size_t begin, size_t end);
+
+
+public:
+  // use a proper alignment when calling the constructor.
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
 };
 
-typedef std::vector<Trajectory2d> Trajectory2dSequence;
+std::istream& operator >> (std::istream &in, Trajectory2d &traj);
+std::ostream& operator << (std::ostream &os, const Trajectory2d &traj);
+
+typedef std::vector<Trajectory2d, Eigen::aligned_allocator<Trajectory2d> > Trajectory2dSequence;
 
 } // end of ns
 } // end of ns

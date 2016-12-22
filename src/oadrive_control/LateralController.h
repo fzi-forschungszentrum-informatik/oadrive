@@ -1,15 +1,12 @@
 // this is for emacs file handling -*- mode: c++; indent-tabs-mode: nil -*-
 
 // -- BEGIN LICENSE BLOCK ----------------------------------------------
-// This file is part of the Open Autonomous Driving Library.
-//
 // This program is free software licensed under the CDDL
 // (COMMON DEVELOPMENT AND DISTRIBUTION LICENSE Version 1.0).
-// You can find a copy of this license in LICENSE.txt in the top
+// You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2015 FZI Forschungszentrum Informatik, Karlsruhe, Germany
-
+// Â© Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -34,7 +31,6 @@
 
 namespace oadrive {
 namespace control {
-
 
 struct ReachedPosition
 {
@@ -90,7 +86,7 @@ public:
   float calculateSteering(const oadrive::core::Pose2d& vehicle_pose);
 
   bool calculateProjection(const oadrive::core::Trajectory2d& trajectory, const oadrive::core::Position2d& position,
-                           oadrive::core::ExtendedPose2d& projection, double& distance, std::size_t& nearest_pose_index) const;
+                           oadrive::core::ExtendedPose2d& projection, double& distance, std::size_t& nearest_pose_index) ;
 
   //!
   bool hasReached() const      { return m_reached; }
@@ -99,15 +95,6 @@ public:
   const oadrive::core::Trajectory2d& getTrajectory() const   { return m_trajectory; }
   oadrive::core::Trajectory2d& getTrajectory()               { return m_trajectory; }
 
-  //! Set position to check if reached
-  void setPositionToCheck(REACHED_POINT rp_type, const oadrive::core::Position2d& position_to_check, double reached_distance = 0.03)
-  {
-    m_reached_positions[(u_int32_t)rp_type].position = position_to_check;
-    m_reached_positions[(u_int32_t)rp_type].reached = false;
-    m_reached_positions[(u_int32_t)rp_type].reached_distance = reached_distance;
-  }
-  bool hasReachedPosition(REACHED_POINT rp_type) const   { return m_reached_positions[(u_int32_t)rp_type].reached; }
-
 
   //! get projected pose
   const oadrive::core::ExtendedPose2d& getProjectedPose() const      { return m_projected; }
@@ -115,10 +102,11 @@ public:
   //! get index on current trajectory
   size_t getIndexOfProjectedPose() const              { return m_nearest_point_index; }
 
-  //! get position to check for reached
-  const oadrive::core::Position2d& getPositionToCheck(REACHED_POINT rp_type) const    { return m_reached_positions[(u_int32_t)rp_type].position; }
-  double& reachedDistanceToCheck(REACHED_POINT rp_type)                               { return m_reached_positions[(u_int32_t)rp_type].reached_distance; }
-  const double& reachedDistanceToCheck(REACHED_POINT rp_type) const                   { return m_reached_positions[(u_int32_t)rp_type].reached_distance; }
+  double getRatioToNextPoint() const          { return m_ratio; }
+
+  void controlDistance();
+
+  size_t getMinTrajPoints() { return MIN_EXTENDED_POINTS_NEEDED_FOR_LATERAL_CONTROLLER; }
 
 private:
 
@@ -144,18 +132,20 @@ private:
   //! Current vehicle pose projected onto m_trajectory
   oadrive::core::ExtendedPose2d m_projected;
 
-  //! constant properties
-  const float BEFORE_ATAN;
-  const float AFTER_ATAN;
-  const float KD;
-  //const float REF_POINT_1;
-  //const float REF_POINT_2;
+  //!  properties
+  float m_BeforeAtan;
+  float m_AfterAtan;
+  float m_OffsetAtan;
+  float mKD;
   const float SIGN_FCT_LIMIT;
   const float WHEELBASE;
-  const float WEIGHTING_DISTANCE;
-  const float MAX_FUNCTION;
+  float mWeightingDistance;
+  float mMaxFunction;
   const size_t MIN_EXTENDED_POINTS_NEEDED_FOR_LATERAL_CONTROLLER;
   const float REACHED_ZONE_DISTANCE;
+  //steering angle = a*(1/radius)+b this values must be measured. (drive with differnt steering angles and measure the radius)
+  float mVorsteuerungA;
+  float mVorsteuerungB;
 
   //!
   const oadrive::core::Position2d STRAIGHT;
@@ -163,17 +153,26 @@ private:
   float m_delta;
   float m_direction;
   double m_distance;
+  double m_distancePID;
 
+  double m_ratio;
 
   bool m_reached;
+
+  //store PI
+  double m_KI;
+  double m_ISum;
+  const double m_ISumMax;
+  const double m_ITA;
+  const double m_PControl;
 
   //! Check for positions
   ReachedPositionArray m_reached_positions;
 
-  //! Check for custom position if reached
-  //oadrive::core::Position2d m_position_to_check;
-  //bool m_position_to_check_reached;
-  //double m_position_to_check_reached_distance;
+
+public:
+  // use a proper alignment when calling the constructor.
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 };
 

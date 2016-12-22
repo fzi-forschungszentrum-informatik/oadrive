@@ -1,15 +1,12 @@
 // this is for emacs file handling -*- mode: c++; indent-tabs-mode: nil -*-
 
 // -- BEGIN LICENSE BLOCK ----------------------------------------------
-// This file is part of the Open Autonomous Driving Library.
-//
 // This program is free software licensed under the CDDL
 // (COMMON DEVELOPMENT AND DISTRIBUTION LICENSE Version 1.0).
-// You can find a copy of this license in LICENSE.txt in the top
+// You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2015 FZI Forschungszentrum Informatik, Karlsruhe, Germany
-
+// Â© Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -29,6 +26,10 @@
 #include <Eigen/StdVector>
 #include <oadrive_core/Types.h>
 #include <oadrive_core/Pose.h>
+#include <icl_core_logging/ThreadStream.h>
+
+#include <boost/shared_ptr.hpp>
+#include <map>
 
 namespace oadrive {
 namespace core {
@@ -116,6 +117,9 @@ public:
    */
   double distance(const ExtendedPose2d& other) const;
 
+  friend ExtendedPose2d operator+(const ExtendedPose2d &pose, const Position2d &pos);
+  friend ExtendedPose2d operator-(const ExtendedPose2d &pose, const Position2d &pos);
+  
 private:
 
   //! The raw pose information.
@@ -140,10 +144,18 @@ public:
 };
 
 std::ostream& operator << (std::ostream &os, const ExtendedPose2d &pose);
-
+std::istream& operator >> (std::istream &is, ExtendedPose2d &pose);
+icl_core::logging::ThreadStream& operator << (icl_core::logging::ThreadStream &os,
+		const ExtendedPose2d &pose);
 
 // some more typedefs
 typedef std::vector<ExtendedPose2d, Eigen::aligned_allocator<ExtendedPose2d> > ExtendedPose2dVector;
+typedef boost::shared_ptr< ExtendedPose2dVector > ExtendedPose2dVectorPtr;
+
+//! \todo this should be correct but doesn't work:
+//typedef std::map <unsigned int , ExtendedPose2dVector, Eigen::aligned_allocator<std::pair<unsigned int , ExtendedPose2dVector> > > ExtendedPose2dVectorByUIntMap;
+
+typedef std::map <unsigned int , ExtendedPose2dVector> ExtendedPose2dVectorByUIntMap;
 
 } // end of ns
 } // end of ns

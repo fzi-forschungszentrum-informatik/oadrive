@@ -1,15 +1,12 @@
 // this is for emacs file handling -*- mode: c++; indent-tabs-mode: nil -*-
 
 // -- BEGIN LICENSE BLOCK ----------------------------------------------
-// This file is part of the Open Autonomous Driving Library.
-//
 // This program is free software licensed under the CDDL
 // (COMMON DEVELOPMENT AND DISTRIBUTION LICENSE Version 1.0).
-// You can find a copy of this license in LICENSE.txt in the top
+// You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2015 FZI Forschungszentrum Informatik, Karlsruhe, Germany
-
+// Â© Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -62,6 +59,7 @@ double ExtendedPose2d::getY() const
 
 double ExtendedPose2d::getYaw() const
 {
+  //return (m_pose.rotation())(0);
   return PoseTraits<Pose2d>::yaw(m_pose);
 }
 
@@ -194,6 +192,39 @@ std::ostream& operator << (std::ostream &os, const ExtendedPose2d &pose)
 {
   pose.print(os);
   return os;
+}
+std::istream& operator >> (std::istream &is, ExtendedPose2d &pose)
+{
+  double x, y, yaw;
+  std::stringstream sstr;
+  std::istreambuf_iterator<char> eos;
+  is.ignore(1);		// ignore opening (
+  is >> x;
+  is.ignore(2);		// ignore ", "
+  is >> y;
+  is.ignore(2);		// ignore "| "
+  is >> yaw;
+  is.ignore(1);		// ignore closing ) and endline
+  pose.setPose(x, y, yaw);
+  return is;
+}
+
+icl_core::logging::ThreadStream& operator << (icl_core::logging::ThreadStream &os,
+                                              const ExtendedPose2d &pose)
+{
+  os << "( " << pose.getX() << ", " << pose.getY() << " | " << pose.getYaw() << ")";
+  return os;
+}
+
+ExtendedPose2d operator+(const ExtendedPose2d &pose, const Position2d &pos )
+{
+    return ExtendedPose2d( pose.getX() + pos(0),
+        pose.getY() + pos(1), pose.getYaw() );
+}
+ExtendedPose2d operator-(const ExtendedPose2d &pose, const Position2d &pos )
+{
+    return ExtendedPose2d( pose.getX() - pos(0),
+        pose.getY() - pos(1), pose.getYaw() );
 }
 
 } // end of ns

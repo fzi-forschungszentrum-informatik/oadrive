@@ -1,15 +1,12 @@
 // this is for emacs file handling -*- mode: c++; indent-tabs-mode: nil -*-
 
 // -- BEGIN LICENSE BLOCK ----------------------------------------------
-// This file is part of the Open Autonomous Driving Library.
-//
 // This program is free software licensed under the CDDL
 // (COMMON DEVELOPMENT AND DISTRIBUTION LICENSE Version 1.0).
-// You can find a copy of this license in LICENSE.txt in the top
+// You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2015 FZI Forschungszentrum Informatik, Karlsruhe, Germany
-
+// Â© Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -27,38 +24,69 @@
 
 #include <cmath>
 #include <oadrive_core/Interpolator.h>
-
+#include <oadrive_control/controlLogging.h>
+#include <iostream>
+#include <oadrive_util/Config.h>
 using namespace oadrive::core;
+using icl_core::logging::endl;
 
 namespace oadrive {
 namespace control {
 
-LateralController::LateralController()
-  : BEFORE_ATAN(0.694271),
-    AFTER_ATAN(0.9),
-    KD(1.0),
-    //REF_POINT_1(1.0),
-    //REF_POINT_2(2.0),
-    SIGN_FCT_LIMIT(0.7),
-    WHEELBASE(0.36),
-    WEIGHTING_DISTANCE(0.62),
-    MAX_FUNCTION(70),
-    MIN_EXTENDED_POINTS_NEEDED_FOR_LATERAL_CONTROLLER(20),
-    REACHED_ZONE_DISTANCE(20),
-    STRAIGHT(Position2d(1.0, 0.0)),
-    m_reached(true)
+LateralController::LateralController():
+  m_BeforeAtan(1),
+  m_AfterAtan(1*1.3369),		//measuered
+  mKD(1.0),
+  SIGN_FCT_LIMIT(0.7),
+  WHEELBASE(0.36),
+  mWeightingDistance(2),
+  mMaxFunction(30),
+  MIN_EXTENDED_POINTS_NEEDED_FOR_LATERAL_CONTROLLER(3),
+  REACHED_ZONE_DISTANCE(0.35),
+  mVorsteuerungA(25.542),
+  mVorsteuerungB(1.089),
+  STRAIGHT(Position2d(1.0, 0.0)),
+  m_distancePID(0),
+  m_reached(true),
+  m_KI(10),
+  m_ISumMax(2),
+  m_ITA(0.1),
+  m_PControl(200)
 {
   m_trajectory.isForwardTrajectory() = true;
+  //Read config from config File. If the config file is not available it will take the default value
+
+  //Weighting the angle (If the angle of the traj and of the car doesn't fit, how strong should it steer?)
+  mKD = (float)oadrive::util::Config::getDouble("Driver","KD",1.0);
+  //Weighting distance. (If the car is not on the traj. how strong should it steering back)
+  //don't make this value to high (stability!)
+  mWeightingDistance = (float)oadrive::util::Config::getDouble("Driver","WeightingDistance",2.0);
+  mMaxFunction = (float)oadrive::util::Config::getDouble("Driver","MaxFunction",30.0);
+  //Precontrol. Measure 3 or 4 circles an make a leastsquare aproximation steeringValue = 1/r*A+B
+  //This is very important for this controller
+  mVorsteuerungA = (float)oadrive::util::Config::getDouble("Driver","VorsteuerungA",25.542);
+  mVorsteuerungB = (float)oadrive::util::Config::getDouble("Driver","VorsteuerungB",1.089);
+  m_BeforeAtan = (float)oadrive::util::Config::getDouble("precontrol","beforeAtan", 1.238);
+  m_AfterAtan = (float)oadrive::util::Config::getDouble("precontrol","AfterAtan", 1.095);
+  m_OffsetAtan = (float)oadrive::util::Config::getDouble("precontrol", "OffsetAtan", 0.02704);
+  std::cout<<"Vorsteuerung: "<<mVorsteuerungA<<std::endl;
 }
 
 float LateralController::calculateSteering(const Pose2d &vehicle_pose)
 {
   assert(m_trajectory.size() >= MIN_EXTENDED_POINTS_NEEDED_FOR_LATERAL_CONTROLLER);
   assert(m_trajectory.curvatureAvailable());
-
   updatePosAndCheckForReached(vehicle_pose);
-
-  Controller(PoseTraits<Pose2d>::yaw(vehicle_pose), m_projected.getYaw(), m_projected.getCurvature(), m_distance);
+  double curvature;
+  if(m_nearest_point_index+2 < m_trajectory.size())
+  {
+    curvature = m_trajectory[m_nearest_point_index+2].getCurvature();
+  }
+  else
+  {
+    curvature = m_projected.getCurvature();
+  }
+  Controller(PoseTraits<Pose2d>::yaw(vehicle_pose), m_projected.getYaw(), curvature, m_distance);
 
   return m_delta;
 }
@@ -67,9 +95,53 @@ void LateralController::updatePosAndCheckForReached(const Pose2d& vehicle_pose)
 {
   calculateProjection(m_trajectory, vehicle_pose.translation(), m_projected, m_distance, m_nearest_point_index);
 
+  // look for angle in region (-M_PI .. M_PI)
+  float angleDifference = m_projected.getYaw() - PoseTraits<Pose2d>::yaw(vehicle_pose);
+  if(angleDifference > M_PI) {
+    angleDifference = 2 * M_PI - angleDifference;
+  }
+  else if(angleDifference < -M_PI) {
+    angleDifference = 2 * M_PI + angleDifference;
+  }
+
   // check if at end of trajectory
-  const bool position_good_enough = m_distance < 0.5 && (m_projected.getYaw() - PoseTraits<Pose2d>::yaw(vehicle_pose)) < M_PI/3;
-  if (position_good_enough && (m_projected.getPosition() - m_trajectory.back().getPosition()).norm() < REACHED_ZONE_DISTANCE)
+  const bool position_good_enough = m_distance < 0.5 && std::abs(angleDifference) < M_PI/3;
+/*  LOGGING_INFO( latLogger, "position_good_enough: " << position_good_enough << endl
+                          << "m_distance: " << m_distance << endl
+                          << "m_projected.getYaw(): " << m_projected.getYaw() << endl
+                          << "PoseTraits<Pose2d>::yaw(vehicle_pose): " << PoseTraits<Pose2d>::yaw(vehicle_pose) << endl
+                          << "old difference last two: " << (m_projected.getYaw() - PoseTraits<Pose2d>::yaw(vehicle_pose)) << endl
+                          << "hopefully corrected difference: " << angleDifference << endl);*/
+
+  //do some more angle magic
+  ExtendedPose2d lastPose = m_trajectory.back();
+  ExtendedPose2d sndLastPose = m_trajectory[m_trajectory.size()-2];
+  ExtendedPose2d vecPose = ExtendedPose2d(vehicle_pose);
+  
+  
+  double x1 = sndLastPose.getX() - lastPose.getX();
+  double x2 = vecPose.getX() - lastPose.getX();
+
+  double y1 = sndLastPose.getY() - lastPose.getY();
+  double y2 = vecPose.getY() - lastPose.getY();
+
+  double denom1 = std::max( sqrt( x1*x1 + y1*y1 ), 0.000001 );
+  double denom2 = std::max( sqrt( x2*x2 + y2*y2 ), 0.000001 );
+  x1 = x1 / denom1;
+  y1 = y1 / denom1;
+  x2 = x2 / denom2;
+  y2 = y2 / denom2;
+  double angle = acos(x1*x2 + y1*y2);
+
+  bool behind = true;
+  if(angle < M_PI/2){
+    behind = false;
+  }
+  
+/*  LOGGING_INFO( latLogger, "position_good_enough: " << position_good_enough << endl
+                           << "difference: " << (m_projected.getPosition() - m_trajectory.back().getPosition()).norm() << endl
+                            << "behind: " << behind << endl); */
+  if (position_good_enough && (m_projected.getPosition() - m_trajectory.back().getPosition()).norm() < REACHED_ZONE_DISTANCE && behind)
   {
     m_reached = true;
   }
@@ -79,7 +151,7 @@ void LateralController::updatePosAndCheckForReached(const Pose2d& vehicle_pose)
 }
 
 bool LateralController::calculateProjection(const Trajectory2d& trajectory, const Position2d& position, ExtendedPose2d& projection,
-                                            double& distance, std::size_t& nearest_pose_index) const
+                                            double& distance, std::size_t& nearest_pose_index)
 {
   float dist1, dist2, ratio, curr_distance_squared;
   float t;
@@ -100,24 +172,24 @@ bool LateralController::calculateProjection(const Trajectory2d& trajectory, cons
 
     _position_type Xnew, Ynew;
 
-     const double& APx = xP - x1;
-     const double& APy = yP - y1;
-     const double& ABx = x2 - x1;
-     const double& ABy = y2 - y1;
-     const double& magAB2 = ABx*ABx + ABy*ABy;
-     const double& ABdotAP = ABx*APx + ABy*APy;
-     t = ABdotAP / magAB2;
+    const double& APx = xP - x1;
+    const double& APy = yP - y1;
+    const double& ABx = x2 - x1;
+    const double& ABy = y2 - y1;
+    const double& magAB2 = ABx*ABx + ABy*ABy;
+    const double& ABdotAP = ABx*APx + ABy*APy;
+    t = ABdotAP / magAB2;
 
-     if ( t < 0)
-     {
-       Xnew = x1;
-       Ynew = y1;
-     }
-     else if (t > 1)
-     {
-       Xnew = x2;
-       Ynew = y2;
-     }
+    if ( t < 0)
+    {
+      Xnew = x1;
+      Ynew = y1;
+    }
+    else if (t > 1)
+    {
+      Xnew = x2;
+      Ynew = y2;
+    }
     else
     {
       Xnew = x1 + ABx*t;
@@ -142,11 +214,12 @@ bool LateralController::calculateProjection(const Trajectory2d& trajectory, cons
 
     }
   }
+  m_ratio = ratio;
 
   // A-B:
-  const Eigen::Vector2d vector_ab = trajectory[nearest_pose_index].getPose().rotation() * STRAIGHT;
+  const Position2d vector_ab = trajectory[nearest_pose_index].getPose().rotation() * STRAIGHT;
   // A-Vehicle
-  const Eigen::Vector2d vector_a_vehicle = position - trajectory[nearest_pose_index].getPosition();
+  const Position2d vector_a_vehicle = position - trajectory[nearest_pose_index].getPosition();
 
   // pose of the car is before the beginning of the trajectory -> use distance to projection on AB-Vector
   if (shortest_distance_found_before_first_point)
@@ -186,22 +259,48 @@ bool LateralController::calculateProjection(const Trajectory2d& trajectory, cons
   return shortest_distance_found_before_first_point;
 }
 
+void LateralController::controlDistance()
+{
+  m_ISum += m_distance;
+  //look if mISum is to high
+  if(m_ISum > m_ISumMax)
+    m_ISum = m_ISumMax;
+  else if(m_ISum < -m_ISumMax)
+    m_ISum = -m_ISumMax;
+  //PI Control
+  //LOGGING_INFO(latLogger," m_Distance: "<<m_distance<<endl);
+  m_distancePID = m_distance*m_PControl + m_KI*m_ITA*m_ISum;
+}
+
 void LateralController::Controller(double psiArg, double thetaArg, double kappaArg, double distanceArg)
 {
+  float vorsteuerung;
   // Vorsteuerung
-  float vorsteuerung = (float)-(((AFTER_ATAN * atan(BEFORE_ATAN*WHEELBASE*kappaArg))*180)/M_PI);
+  if(kappaArg != kappaArg)
+  {
+    //kappaArg is NAN that is very evil
+    vorsteuerung = 0;
+    //LOGGING_ERROR(latLogger,"KappaArg is NAN. Can't use feedforward control."<<endl);
+  }
+  else
+  {
+    //
+//    vorsteuerung = -kappaArg*mVorsteuerungA+mVorsteuerungB;
+    vorsteuerung = (float)-(((m_AfterAtan * atan(m_BeforeAtan*WHEELBASE*kappaArg) + m_OffsetAtan)*180)/M_PI);
+  }
 
   // Winkel
-  float angleFinal   = -KD * NormalizeAngle(thetaArg - psiArg);
+  float angleFinal   = -mKD * NormalizeAngle(thetaArg - psiArg);
   if (!m_trajectory.isForwardTrajectory())
     angleFinal = -angleFinal;
-	
+
   // Distanz
-  float distFinal    = -/*AdaptRefPointFuction(velocityArg) * */ WEIGHTING_DISTANCE * SignedFunction(distanceArg);
+  float distFinal    = -/*AdaptRefPointFuction(velocityArg) * */ mWeightingDistance * SignedFunction(distanceArg);
+  //  float distFinal = -m_distancePID;
 
-
+  
   m_delta = vorsteuerung + angleFinal + distFinal;
-
+  //LOGGING_INFO(latLogger,"[Controller] Vorsteuerung: "<<vorsteuerung<<" Angle Final: "<<angleFinal<<" distFinal: "<<distFinal<<"distance: "<<distanceArg<<"m_delta"<<m_delta<<endl);
   if(m_delta > 100)
     m_delta = 100;
   else if(m_delta < -100)
@@ -219,13 +318,18 @@ float LateralController::NormalizeAngle(float angleArg)
   return angleArg;
 }
 
+
 float LateralController::SignedFunction(float numArg)
 {
-  float res = numArg/SIGN_FCT_LIMIT*MAX_FUNCTION;
-  if (res > MAX_FUNCTION)
-    res = MAX_FUNCTION;
-  else if (res < -MAX_FUNCTION)
-    res = -MAX_FUNCTION;
+//  signed_distance = std::min(signed_distance, p_signed_distance_max);
+//  signed_distance = std::max(signed_distance, p_signed_distance_min);
+
+  float res = numArg;
+//  float res = numArg/SIGN_FCT_LIMIT*mMaxFunction;
+  if (res > mMaxFunction)
+    res = mMaxFunction;
+  else if (res < -mMaxFunction)
+    res = -mMaxFunction;
 
   return res;
 }

@@ -1,0 +1,13 @@
+%YAML:1.0
+#Weighting distance. (If the car is not on the traj. how strong should it steering back)
+#don't make this value to high (stability!)
+WeightingDistance: 300.0
+MaxFunction: 70.0
+#Weighting the angle (If the angle of the traj and of the car doesn't fit, how strong should it steer?)
+KD: 2.0
+#Precontrol. Measure 3 or 4 circles an make a leastsquare aproximation steeringValue = 1/r*A+B
+#This is very important for this controller
+VorsteuerungA: 25.542
+VorsteuerungB: 1.089
+
+MAX_STEERING_SPEED: 0.35

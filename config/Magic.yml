@@ -1,0 +1,4 @@
+%YAML:1.0
+# Unfortunately we don't know we we need this constants. So they are magic
+#Offset from the middle of the street
+MagicStreetOffset: 0.02

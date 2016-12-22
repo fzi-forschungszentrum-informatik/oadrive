@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Config>
+<IclCore>
+<Logging>
+<!--This Stream is for std::cout-->
+<!--~C (Name der Klasse, in der die Lognachricht erzeugt wurde)
+~D (Name der Funktion, innerhalb der die Lognachricht erzeugt wurde)
+~E (Die Lognachricht selbst)
+~F (Name der Datei, innerhalb der die Lognachricht erzeugt wurde)
+~G (Zeilennummer innerhalb der Datei, in der die Lognachricht erzeugt wurde)
+~L (Das Level der Lognachricht)
+~O (Name des Objekts, in dem die Lognachricht erzeugt wurde)
+~S (Der Name des erzeugenden Logstreams)
+~T (Zeitstempel der Lognachricht)
+~C und ~O funktionieren nur, wenn spezielle Loggingmakros verwendet wurden. Für ~C muss das ein Standardmakro mit angehängtem _C, für ~C und ~O ein Standardmakro mit angehängtem _CO verwendet werden. Nachteil: diese Makros erfordern die Angabe des Typs bzw. des Typs und der Objektinstanz. -->
+
+        <OutputStream1>
+        <OutputStreamName>Stdout</OutputStreamName>
+        <Name>Stdout</Name>
+       <LogLevel>Trace</LogLevel>
+
+
+       <Format>[~L ~S] ~E</Format>
+       <LogStream5>mcLogger</LogStream5>
+<LogStream6>utilLogger</LogStream6>
+
+       </OutputStream1>
+
+
+<!--       This stream is stored-->
+      <OutputStreamFile>
+      <Name>Debug</Name>
+      <OutputStreamName>File</OutputStreamName>
+      <FileName>/tmp/recordedData/completeLog.txt</FileName>
+      <DeleteOlderThan>3</DeleteOlderThan>
+      <Rotate>no</Rotate>
+      <LogLevel>Trace</LogLevel>
+      <LogStream3>interfaceLogger</LogStream3>
+      <LogStream4>worldLogger</LogStream4>
+	  <LogStream5>mcLogger</LogStream5>
+	  <LogStream6>utilLogger</LogStream6>
+	  <LogStream7>obstacleLogger</LogStream7>
+	  <LogStream8>lanedetectionLogger</LogStream8>
+	  <LogStream10>latLogger</LogStream10>
+	  <LogStream13>controlLogger</LogStream13>
+  </OutputStreamFile>
+
+<!--       This stream is stored-->
+	  <OutputStreamFile2>
+		  <Name>Lateral</Name>
+      <OutputStreamName>File</OutputStreamName>
+      <FileName>/tmp/recordedData/latLog.txt</FileName>
+      <DeleteOlderThan>3</DeleteOlderThan>
+      <Rotate>no</Rotate>
+      <LogLevel>Trace</LogLevel>
+      <LogStream3>interfaceLogger</LogStream3>
+      <LogStream9>latLogger</LogStream9>
+      </OutputStreamFile2>
+
+<!--       This stream is stored-->
+      <OutputStreamFile3>
+      <Format>~E [~T]</Format>
+      <Name>usLog</Name>
+      <OutputStreamName>File</OutputStreamName>
+      <FileName>/tmp/recordedData/usLog.txt</FileName>
+      <DeleteOlderThan>3</DeleteOlderThan>
+      <Rotate>no</Rotate>
+      <LogLevel>Trace</LogLevel>
+      <LogStream3>interfaceLogger</LogStream3>
+      <LogStream11>USDataLogger</LogStream11>
+      </OutputStreamFile3>
+
+<!--       This stream is stored-->
+      <OutputStreamFile4>
+      <Format>[~T] ~E</Format>
+      <Name>LaneLog</Name>
+      <OutputStreamName>File</OutputStreamName>
+      <FileName>/tmp/recordedData/LaneLog.txt</FileName>
+      <DeleteOlderThan>3</DeleteOlderThan>
+      <Rotate>no</Rotate>
+      <LogLevel>Trace</LogLevel>
+      <LogStream3>interfaceLogger</LogStream3>
+      <LogStream8>lanedetectionLogger</LogStream8>
+      </OutputStreamFile4>
+
+
+
+<!--Every Logger must defined here-->
+     <LogStream3>
+     <Name>interfaceLogger</Name>
+     <LogLevel>Trace</LogLevel>
+     </LogStream3>
+     <LogStream4>
+     <Name>worldLogger</Name>
+     <LogLevel>Trace</LogLevel>
+     </LogStream4>
+     <LogStream5>
+     <Name>mcLogger</Name>
+     <LogLevel>Trace</LogLevel>
+     </LogStream5>
+     <LogStream6>
+     <Name>utilLogger</Name>
+     <LogLevel>Trace</LogLevel>
+     </LogStream6>
+     <LogStream7>
+     <Name>obstacleLogger</Name>
+     <LogLevel>Trace</LogLevel>
+     </LogStream7>
+
+     <LogStream8>
+     <Name>lanedetectionLogger</Name>
+     <LogLevel>Trace</LogLevel>
+     </LogStream8>
+     <LogStream9>
+     <Name>latLogger</Name>
+     <LogLevel>Trace</LogLevel>
+     </LogStream9>
+     <LogStream10>
+     <Name>latLogger</Name>
+     <LogLevel>Warning</LogLevel>
+     </LogStream10>
+     <LogStream11>
+     <Name>USDataLogger</Name>
+     <LogLevel>trace</LogLevel>
+     </LogStream11>
+     <LogStream12>
+     <Name>interfaceLogger</Name>
+     <LogLevel>Warning</LogLevel>
+     </LogStream12>
+     <LogStream13>
+     <Name>controlLogger</Name>
+     <LogLevel>trace</LogLevel>
+     </LogStream13>
+   </Logging>
+   </IclCore>
+   </Config>
