@@ -27,8 +27,14 @@
 #include <opencv2/calib3d/calib3d.hpp>
 //#include <opencv2/imgcodecs.hpp>
 #include <string.h>
+namespace oadrive {
+namespace util {
 
-/*
+/*!
+  \brief This class generates generate a warp matrix to perform a birdview conversion. It writes also the pixel/m and the car coordinates of down left corner.
+  It also estimates the camera postion (including yaw pitch roll). (Only with OpenCV 3) This postion is needed to generate the refernce Image for the depth image.
+
+
 A Note on Coordinate systems:
 /////////////////////////////////////////
 Car coordinate system:
@@ -69,8 +75,6 @@ Yaw of zero points towards positive x. This is due to the way oadrive_control/La
 angle.
 
 */
-namespace oadrive {
-namespace util {
 class CameraCalibration
 {
 public:
@@ -85,10 +89,9 @@ public:
 
   //!transform the image into Birdview
   cv::Mat transform(cv::Mat image);
+
   //!read Camera Cal file to undistort the image
   void readCameraCalFile (std::string path);
-  //!read complete Calibration File (Camera and Wrap Matrix)
-  //void readCompleteCalFile();
 
   //!save calibration file
   void writeCalFile (std::string path);
@@ -108,6 +111,7 @@ public:
 
   double getMPerPixel();
 
+  //! \brief adjustPicture Generate a Gui to adjust the birdview (scale and y offset)
   void adjustPicture(cv::Mat img);
 
 private:

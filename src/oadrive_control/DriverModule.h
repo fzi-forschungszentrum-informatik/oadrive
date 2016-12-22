@@ -27,6 +27,7 @@
 #include <oadrive_world/MultiTrajectory.h>
 
 #include <boost/thread/mutex.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 
 using namespace oadrive::core;
@@ -130,6 +131,9 @@ private:
   bool mInitializedTrajectory;
 
   bool mTrajectoryEndReached;
+
+  boost::posix_time::ptime mLastImageStamp;
+  bool mLowFrameRate;
 
   boost::mutex mtx;
 

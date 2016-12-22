@@ -58,6 +58,16 @@ const float CROSSROAD_LINE_TO_CROSS_SECTION = 0.5 + 0.1;
 const float LANE_WIDTH = 0.440;
 const float PATCH_WIDTHS[numPatchTypes] = { 1.0, 1.0, 0.47 };
 const double PATCH_LENGTHS[numPatchTypes] = { 0.25, 1.0, 0.7853 };
+
+// PARKING_PATCH:
+// Parallel: 0.45 x 0.7853
+// Cross: 0.47 x 0.85
+// For the StreetPatcher, define the precise positions:
+const float PATCH_LENGTHS_PARKING_PARALLEL = 0.7853;
+const float PATCH_WIDTHS_PARKING_PARALLEL = 0.45;
+const float PATCH_LENGTHS_PARKING_CROSS = 0.85;
+const float PATCH_WIDTHS_PARKING_CROSS = 0.47;
+
 const float MINIMUM_PATCH_DIST = 0.25;
 const float MAXIMUM_PATCH_DIST = 2;
 

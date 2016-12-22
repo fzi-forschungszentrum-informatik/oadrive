@@ -21,11 +21,15 @@ Dependencies:
       automatic camera calibration).
 - Aruco
 - redisclient (https://github.com/nekipelov/redisclient)
-- icMaker
+- icMaker (https://github.com/fzi-forschungszentrum-informatik/icmaker)
+- icl_core (https://github.com/fzi-forschungszentrum-informatik/icl_core)
 
 Installation:
 -------------------------------------------------------------
-Build and install OpenCV, Aruco, redisclient.
+Build and install OpenCV, Aruco, redisclient. Use icmaker to create
+a workspace including icl_core and oadrive. See 
+https://github.com/fzi-forschungszentrum-informatik/icmaker for
+more information.
 
 
 Usage:

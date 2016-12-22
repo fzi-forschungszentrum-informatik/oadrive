@@ -43,6 +43,7 @@
 	  <LogStream8>lanedetectionLogger</LogStream8>
 	  <LogStream10>latLogger</LogStream10>
 	  <LogStream13>controlLogger</LogStream13>
+          <LogStream14>TrafficSignLogger</LogStream14>
   </OutputStreamFile>
 
 <!--       This stream is stored-->
@@ -131,6 +132,10 @@
      <Name>controlLogger</Name>
      <LogLevel>trace</LogLevel>
      </LogStream13>
+     <LogStream14>
+     <Name>TrafficSignLogger</Name>
+     <LogLevel>trace</LogLevel>
+     </LogStream14>
    </Logging>
    </IclCore>
    </Config>

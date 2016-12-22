@@ -138,6 +138,8 @@ void Interface::reset()
 
 void Interface::setCameraImage( cv::Mat image, bool isBirdView )
 {
+
+  LOGGING_ERROR(interfaceLogger, " Interface got image .... " <<endl);
   // Get grayscale image
   cv::Mat gray;
   cv::cvtColor(image, gray, CV_BGR2GRAY);
@@ -155,8 +157,11 @@ void Interface::setCameraImage( cv::Mat image, bool isBirdView )
   }
 
   ExtendedPose2d carPoseCopy = mDriver.getCarPose();
+  LOGGING_INFO(interfaceLogger, " Updating car pose .... " <<endl);
   Environment::getInstance()->updateCarPose( carPoseCopy );
 
+
+  LOGGING_INFO(interfaceLogger, " Checking end of Trajectory .... " <<endl);
   bool endOfTrajctoryEvent = mDriver.checkEndOfTrajectoryFlag();
   if( endOfTrajctoryEvent )
   {
@@ -177,6 +182,7 @@ void Interface::setCameraImage( cv::Mat image, bool isBirdView )
   // Get grayscale image:
   //cv::cvtColor( mLastBirdViewImage, grayBirdView, CV_BGR2GRAY);
 
+
   bool streetPatcherWasInitialized = mStreetPatcher.getIsInitialized();
 
   // Let the StreetPatcher know how many frames per meter currently recording:
@@ -184,10 +190,13 @@ void Interface::setCameraImage( cv::Mat image, bool isBirdView )
 
   // Let Street Patcher find patches.
   // After this operation, the patches will be in the Environment.
+  LOGGING_INFO(interfaceLogger, " Give the street patcher a new image .... " <<endl);
   mStreetPatcher.setImage( mLastBirdViewImageGray, carPoseCopy );
 
   // Let trajectory factory generate new trajectoy if needed.
   // The trajectory will be saved in the environment.
+
+  LOGGING_INFO(interfaceLogger, " Updating the trajectory .... " <<endl);
   mTrajectoryFactory.requestUpdate(true);
 
   //timer.stop();
@@ -207,6 +216,8 @@ void Interface::setCameraImage( cv::Mat image, bool isBirdView )
 
 
   // give image to traffic sign detector
+
+  LOGGING_INFO(interfaceLogger, " Detecting Traffic signs .... " <<endl);
   mTrafficSignDetectorAruco.detectMarkers(gray);
 
 
@@ -217,12 +228,16 @@ void Interface::setCameraImage( cv::Mat image, bool isBirdView )
   //this cause that the timer is more inaccurate
   incrementTime(timeDiff.total_milliseconds());
 
+  LOGGING_INFO(interfaceLogger, " Clear obstacles .... " <<endl);
   Environment::getInstance()->clearObstacles( US );
 
   // Trigger processing of US Sensor data:
+
+  LOGGING_INFO(interfaceLogger, " process sensors .... " <<endl);
   mProcessSensor.processUsSensor();
 
   // If new maneuver list of jury commands were received, process them:
+  LOGGING_INFO(interfaceLogger, " Jury commands and man list .... " <<endl);
   processJuryCommands();
   processNewManeuverList();
 
@@ -236,7 +251,8 @@ void Interface::setCameraImage( cv::Mat image, bool isBirdView )
   //timer.stop();
   //float timeTrafficSign = timer.value;
   //std::cout << "traffic sign time: "<<timeTrafficSign<<std::endl;
-  
+
+  LOGGING_INFO(interfaceLogger, " Do the rest .... " <<endl);
   if( Broker::isActive() )
   {
     if( Broker::getInstance()->getTurnCommandReceived() )
@@ -255,17 +271,26 @@ void Interface::setCameraImage( cv::Mat image, bool isBirdView )
     }
   }
 
+  LOGGING_INFO(interfaceLogger, " Duming data .... " <<endl);
   if( mDebugActive )
     dumpDebugData( carPoseCopy, image );
+
+  LOGGING_ERROR(interfaceLogger, " Interface has processed image. " <<endl);
 
 }
 
 void Interface::setDepthImage(cv::Mat image)
 {
+
+  LOGGING_INFO(interfaceLogger, " Entering Depth image processing ... " <<endl);
+  LOGGING_INFO(interfaceLogger, " Clearing obstacles ... " <<endl);
   Environment::getInstance()->clearObstacles( DEPTH );
+  LOGGING_INFO(interfaceLogger, " Process depth ... " <<endl);
   mProcessSensor.processDepthSensor(image);
+
   if( mDebugActive )
   {
+    LOGGING_INFO(interfaceLogger, " Write depth debug info ... " <<endl);
     std::stringstream sstr;
 #ifdef noPng
     sstr << mDebugOutputPath << "/Depth/" << std::setfill('0') << std::setw(5) << mImageCounter << ".bmp";
@@ -275,15 +300,19 @@ void Interface::setDepthImage(cv::Mat image)
     cv::imwrite( sstr.str(), image );
     //cv::imwrite( "debugDepth.png", mProcessSensor.getDepthImageProcessor()->getDebugImage( image ) );	// TODO: Remove
   }
+  LOGGING_INFO(interfaceLogger, " Depth image is done as well. " <<endl);
 }
 
 void Interface::setCarPose( const ExtendedPose2d &carPose )
 {
+  LOGGING_INFO(interfaceLogger, " Updating car pose ... " <<endl);
   mDriver.update( carPose );
 
   // Comment out if trajectory debugging is not needed:
   if( mDebugActive )
     mLogTrajectory.push_back( carPose );
+
+  LOGGING_INFO(interfaceLogger, " Car pose updated ." <<endl);
 }
 
 void Interface::setUsSensor(oadrive::obstacle::usSensor measurements )
@@ -301,6 +330,9 @@ void Interface::setUsSensor(oadrive::obstacle::usSensor measurements )
       "\trR: " << measurements.rearRight <<
       "\tFrame: " << mImageCounter << endl );
   mProcessSensor.setNewUsSensorValues( measurements );
+
+
+  LOGGING_INFO(interfaceLogger, " US data processed ... " <<endl);
 }
 
 float Interface::getSteering()
@@ -350,11 +382,14 @@ float Interface::getSpeed()
     mLastSpeed = returnSpeed;
 
 
+  LOGGING_INFO(interfaceLogger, " got Speed " <<endl);
   return returnSpeed;
 }
 
 void Interface::setJuryCommand( juryActions action, int maneuverEntryID )
 {
+
+  LOGGING_INFO(interfaceLogger, " Setting Jury command ... " <<endl);
   JuryCommand cmd;
   cmd.action = action;
   cmd.maneuverEntryID = maneuverEntryID;
@@ -362,10 +397,14 @@ void Interface::setJuryCommand( juryActions action, int maneuverEntryID )
   mtx.lock();
   mJuryCommandQueue.push_back( cmd );
   mtx.unlock();
+
+  LOGGING_INFO(interfaceLogger, " got jury command " <<endl);
 }
 
 void Interface::processJuryCommands()
 {
+
+  LOGGING_INFO(interfaceLogger, " Process jury ... " <<endl);
   mtx.lock();
   for( std::vector<JuryCommand>::iterator it = mJuryCommandQueue.begin();
       it != mJuryCommandQueue.end(); it ++ )
@@ -374,18 +413,23 @@ void Interface::processJuryCommands()
   }
   mJuryCommandQueue.clear();
   mtx.unlock();
+  LOGGING_INFO(interfaceLogger, " Jury processed ... " <<endl);
 }
 
 void Interface::setManeuverList( std::string list )
 {
+  LOGGING_INFO(interfaceLogger, " Setting manoveur list ... " <<endl);
   mtx.lock();
   mManeuverList = list;
   mNewManeuverlistReceived = true;
   mtx.unlock();
+  LOGGING_INFO(interfaceLogger, " Manoveur list set. " <<endl);
 }
 
 void Interface::processNewManeuverList()
 {
+
+  LOGGING_INFO(interfaceLogger, "processing man lst ... " <<endl);
   mtx.lock();
   if( mNewManeuverlistReceived )
   {
@@ -401,6 +445,7 @@ void Interface::processNewManeuverList()
     }
   }
   mtx.unlock();
+  LOGGING_INFO(interfaceLogger, "Man list processed ... " <<endl);
 }
 
 void Interface::incrementTime(int milliSeconds)
@@ -467,7 +512,7 @@ void Interface::startDebugDumping( std::string folder )
   mDebugOutputPath = folder;
   LOGGING_INFO( interfaceLogger, "[Interface] Copied config files to " << folder + "/Config" << "." << endl );
 
-  mTrajectoryFactory.startDebugDumping( folder + "/Trajectories/" );
+  //mTrajectoryFactory.startDebugDumping( folder + "/Trajectories/" );
 }
 
 void Interface::dumpDebugData( const ExtendedPose2d &currentCarPose, cv::Mat image )
@@ -511,9 +556,9 @@ void Interface::dumpDebugData( const ExtendedPose2d &currentCarPose, cv::Mat ima
 #else
   sstr << mDebugOutputPath << "/Map/" << std::setfill('0') << std::setw(5) << mImageCounter << ".png";
 #endif
-  cv::Mat map = Environment::getInstance()->getEnvAsImage(
+/*  cv::Mat map = Environment::getInstance()->getEnvAsImage(
       currentCarPose.getX(), currentCarPose.getY(), 2, 50 );
-  cv::imwrite( sstr.str(), map );
+  cv::imwrite( sstr.str(), map );*/
 
   sstr.str("");
   sstr.clear();

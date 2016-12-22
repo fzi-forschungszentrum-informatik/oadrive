@@ -206,7 +206,9 @@ void MissionControl::eventRegionTriggered(EventRegionPtr region, EventType evTyp
       mStateMachine.process_event( EvLeftUnconnectedTrafficSignRegion() );
 
   } else if(region->getEventRegionType() == CROSS_SECTION_OBSTACLES){
-    LOGGING_WARNING( mcLogger, "Ignoring event region of CROSS_SECTION_OBSTACLES" << endl );
+    //LOGGING_WARNING( mcLogger, "Ignoring event region of CROSS_SECTION_OBSTACLES" << endl );
+  } else if(region->getEventRegionType() == PED_CROSSING_HALT ){
+      mStateMachine.process_event( EvEnteredPedestrianCrossingRegion() );
   } else {
     LOGGING_WARNING( mcLogger, "Don't know how to handle event region type:" <<
                      region->getEventRegionType() << "!" << endl );

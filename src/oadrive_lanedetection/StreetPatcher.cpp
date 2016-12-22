@@ -22,7 +22,6 @@
  */
 //----------------------------------------------------------------------
 
-
 #include "StreetPatcher.h"
 
 #include <iostream>
@@ -51,7 +50,7 @@ StreetPatcher::StreetPatcher( float size, CoordinateConverter* coordConverter,
   // Effectively used regions (due to patch symmetry):
   , mNumUsedAngleRegions( mNumAngleRegions/2 )
   , mAngleRegionSize( 2.0*M_PI/mNumAngleRegions )
-  , mScale(0.08)   // World coordinates are scaled by this factor
+  , mScale(0.1)   // World coordinates are scaled by this factor
   , mMeters2Pixels( mCoordConverter->getPixelsPerMeter()*mScale ) // ~334 pixels are one meter
   , mSize( size )
   , mRadius( size*0.5 )
@@ -83,6 +82,7 @@ StreetPatcher::StreetPatcher( float size, CoordinateConverter* coordConverter,
   , mCurrentFramesPerMeter( 10.0 )	// Some initial value (should be set whenever car speed of FPS change!)
   , mCarIsMoving( false )
   , mDebugMode( Config::getBool( "General", "DebugOutput", false ))
+  , mBoostCrossSectionFeatures( false )
 {
   mDebugHoughSpace = cv::Mat( mRows*4, mCols*mNumUsedAngleRegions, CV_16UC1 );
 
@@ -161,13 +161,21 @@ void StreetPatcher::setCarPose( const ExtendedPose2d &carPose )
 
 }
 
-void StreetPatcher::setAPrioriVote( const ExtendedPose2d &pose, enumAPrioriStrength strength )
+void StreetPatcher::setAPrioriVote( const ExtendedPose2d &pose, enumAPrioriStrength strength,
+    bool inAllDirections )
 {
   mAPrioriInfoGiven = true;
   mAPrioriPose = pose;
+  mAPrioriVoteInAllDirections = inAllDirections;
   mAPrioriStrength = strength;
+  LOGGING_INFO( lanedetectionLogger, "-------------------------" << endl);
   LOGGING_INFO( lanedetectionLogger, "Set a prioriVote" <<
                 endl );
+  if( inAllDirections )
+  {
+    LOGGING_INFO( lanedetectionLogger, "In ALL directions." << endl );
+  }
+  LOGGING_INFO( lanedetectionLogger, "-------------------------" << endl);
 }
 
 void StreetPatcher::insertAPrioriVote()
@@ -178,12 +186,6 @@ void StreetPatcher::insertAPrioriVote()
   cv::RotatedRect rRect( center, mCarVoteSize, 180.0f/M_PI*mAPrioriPose.getYaw() );
   cv::RotatedRect rRectThin( center, mCarVoteSizeThin, 180.0f/M_PI*mAPrioriPose.getYaw() );
 
-  int angleRegion = angle2AngleRegionID( mAPrioriPose.getYaw() );
-  int angleRegion2 = getNeighbourAngleRegion( angleRegion, +1 );
-  int angleRegion3 = getNeighbourAngleRegion( angleRegion, -1 );
-
-  //cv::Scalar voteLow( mMinimumVoteForDetection - mMinimumVote*5 );
-  //cv::Scalar voteHigh( mMinimumVote*3 );
   cv::Scalar voteLow;
   cv::Scalar voteHigh;
   if( mAPrioriStrength == STRENGTH_HIGH )
@@ -194,16 +196,37 @@ void StreetPatcher::insertAPrioriVote()
   } else if ( mAPrioriStrength == STRENGTH_LOW ) {
     voteLow = cv::Scalar( mMinimumVoteForDetection - mMinimumVote*40 );
   }
-  // VoteHigh is added additionally ontop of the lower vote.
   voteHigh = cv::Scalar( mMinimumVote*3 );
-  cv::Rect boundings = rRect.boundingRect();
-  cv::Rect boundingsThin = rRectThin.boundingRect();
-  addRectangle( mHoughSpace[angleRegion], rRect, boundings, voteLow );
-  addRectangle( mHoughSpace[angleRegion], rRectThin, boundingsThin, voteHigh );
-  addRectangle( mHoughSpace[angleRegion2], rRect, boundings, voteLow );
-  addRectangle( mHoughSpace[angleRegion2], rRectThin, boundingsThin, voteHigh );
-  addRectangle( mHoughSpace[angleRegion3], rRect, boundings, voteLow );
-  addRectangle( mHoughSpace[angleRegion3], rRectThin, boundingsThin, voteHigh );
+
+  if( mAPrioriVoteInAllDirections )
+  {
+    for( int angleRegion = 0; angleRegion < mNumUsedAngleRegions; angleRegion ++ )
+    {
+      //cv::Scalar voteLow( mMinimumVoteForDetection - mMinimumVote*5 );
+      //cv::Scalar voteHigh( mMinimumVote*3 );
+      // VoteHigh is added additionally ontop of the lower vote.
+      cv::Rect boundings = rRect.boundingRect();
+      cv::Rect boundingsThin = rRectThin.boundingRect();
+      addRectangle( mHoughSpace[angleRegion], rRect, boundings, voteLow );
+      addRectangle( mHoughSpace[angleRegion], rRectThin, boundingsThin, voteHigh );
+    }
+  } else {
+    int angleRegion = angle2AngleRegionID( mAPrioriPose.getYaw() );
+    int angleRegion2 = getNeighbourAngleRegion( angleRegion, +1 );
+    int angleRegion3 = getNeighbourAngleRegion( angleRegion, -1 );
+
+    //cv::Scalar voteLow( mMinimumVoteForDetection - mMinimumVote*5 );
+    //cv::Scalar voteHigh( mMinimumVote*3 );
+    // VoteHigh is added additionally ontop of the lower vote.
+    cv::Rect boundings = rRect.boundingRect();
+    cv::Rect boundingsThin = rRectThin.boundingRect();
+    addRectangle( mHoughSpace[angleRegion], rRect, boundings, voteLow );
+    addRectangle( mHoughSpace[angleRegion], rRectThin, boundingsThin, voteHigh );
+    addRectangle( mHoughSpace[angleRegion2], rRect, boundings, voteLow );
+    addRectangle( mHoughSpace[angleRegion2], rRectThin, boundingsThin, voteHigh );
+    addRectangle( mHoughSpace[angleRegion3], rRect, boundings, voteLow );
+    addRectangle( mHoughSpace[angleRegion3], rRectThin, boundingsThin, voteHigh );
+  }
 }
 
 void StreetPatcher::addFeatures( FeatureVector* features )
@@ -345,6 +368,10 @@ void StreetPatcher::addFeature( Feature &f )
       cv::Rect boundings = rr.boundingRect();
 
       weight = vote.weight*f.historicWeight;
+      if( mBoostCrossSectionFeatures )
+      {
+        weight = weight*2.8;    // Boost the features.
+      }
 
       addRectangle( mHoughSpaceForCrossSection[angleRegion],
                     rr, boundings, weight );
@@ -917,13 +944,22 @@ void StreetPatcher::initFeatureVotes()
   vote.angleOffset = -M_PI*0.5;
   vote.size.width = PATCH_WIDTHS[PARKING]*mMeters2Pixels;
   vote.pos.y = PATCH_LENGTHS[PARKING]*0.5*mMeters2Pixels;
-  vote.pos.x = -PATCH_WIDTHS[PARKING]*0.5*mMeters2Pixels;
+  vote.pos.x = -PATCH_WIDTHS[PARKING]*0.25*mMeters2Pixels;
   vote.size.height = 0.02*mMeters2Pixels;
-  vote.weight = mMinimumVote*10;
+  vote.weight = mMinimumVote*30;
   vote.separationID = 0;
   mVotesForParkingLot[PARKING_LINE].push_back( vote );
+  vote.angleOffset = -M_PI*0.5 + mAngleRegionSize;
+  mVotesForParkingLot[PARKING_LINE].push_back( vote );
+  vote.angleOffset = -M_PI*0.5 - mAngleRegionSize;
+  mVotesForParkingLot[PARKING_LINE].push_back( vote );
   vote.separationID = 1;
+  vote.angleOffset = -M_PI*0.5;
   vote.pos.y = -PATCH_LENGTHS[PARKING]*0.5*mMeters2Pixels;
+  mVotesForParkingLot[PARKING_LINE].push_back( vote );
+  vote.angleOffset = -M_PI*0.5 + mAngleRegionSize;
+  mVotesForParkingLot[PARKING_LINE].push_back( vote );
+  vote.angleOffset = -M_PI*0.5 - mAngleRegionSize;
   mVotesForParkingLot[PARKING_LINE].push_back( vote );
 
   // Cross parking lots:
@@ -945,14 +981,35 @@ void StreetPatcher::initFeatureVotes()
   vote.angleOffset = 0;
   vote.size.width = PATCH_WIDTHS[PARKING]*mMeters2Pixels;
   vote.pos.y = PATCH_WIDTHS[PARKING]*0.5*mMeters2Pixels;
-  vote.pos.x = -PATCH_LENGTHS[PARKING]*0.5*mMeters2Pixels;
-  vote.size.height = 0.02*mMeters2Pixels;
-  vote.weight = mMinimumVote*10;
+  vote.pos.x = -PATCH_LENGTHS[PARKING]*0.25*mMeters2Pixels;
+  vote.size.height = 0.01*mMeters2Pixels;
+  vote.weight = mMinimumVote*30;
   vote.separationID = 0;
   mVotesForParkingLot[PARKING_LINE].push_back( vote );
+  vote.angleOffset = mAngleRegionSize;
+  mVotesForParkingLot[PARKING_LINE].push_back( vote );
+  vote.angleOffset = -mAngleRegionSize;
+  mVotesForParkingLot[PARKING_LINE].push_back( vote );
   vote.separationID = 1;
+  vote.angleOffset = 0;
   vote.pos.y = -PATCH_WIDTHS[PARKING]*0.5*mMeters2Pixels;
   mVotesForParkingLot[PARKING_LINE].push_back( vote );
+  vote.angleOffset = mAngleRegionSize;
+  mVotesForParkingLot[PARKING_LINE].push_back( vote );
+  vote.angleOffset = -mAngleRegionSize;
+  mVotesForParkingLot[PARKING_LINE].push_back( vote );
+  /*vote.angleOffset = 0;
+  vote.size.width = PATCH_WIDTHS[PARKING]*mMeters2Pixels;
+  vote.pos.y = PATCH_WIDTHS[PARKING]*0.5*mMeters2Pixels;
+  vote.pos.x = -PATCH_LENGTHS[PARKING]*0.5*mMeters2Pixels;
+  vote.size.height = 0.02*mMeters2Pixels;
+  vote.weight = mMinimumVote*50;
+  vote.separationID = 0;
+  mVotesForParkingLot[PARKING_LINE].push_back( vote );
+  vote.angleOffset = mAngleRegionSize;
+  mVotesForParkingLot[PARKING_LINE].push_back( vote );
+  vote.angleOffset = -mAngleRegionSize;
+  mVotesForParkingLot[PARKING_LINE].push_back( vote );*/
 }
 
 void StreetPatcher::initPatchVotes()
@@ -1128,27 +1185,75 @@ void StreetPatcher::initPatchVotes()
   ////////////////////////////////////////////
   // Let STRAIGHT patches vote for "parallel" PARKING patches:
   width = 0.02*mMeters2Pixels;
-  length = PATCH_LENGTHS[PARKING]*mMeters2Pixels;
+  length = PATCH_LENGTHS_PARKING_PARALLEL*mMeters2Pixels;
   vote.pos.x = 0;
-  vote.pos.y = -(PATCH_WIDTHS[STRAIGHT]*0.5 + PATCH_WIDTHS[PARKING]*0.5)*mMeters2Pixels;
-  vote.weight = mMinimumVote;   // Minimal vote. This is only used for lateral localization.
+  vote.pos.y = -(PATCH_WIDTHS[STRAIGHT]*0.5 + PATCH_WIDTHS_PARKING_PARALLEL*0.5)*mMeters2Pixels;
+  vote.weight = 1*mMinimumVote;   // Minimal vote. This is only used for lateral localization.
+  //vote.weight = mMinimumVoteForDetectionParkingLot - 2*mMinimumVote;   // Minimal vote. This is only used for lateral localization.
   vote.size.height = width;
   vote.size.width = length;
   vote.angleOffset = 0;
   mPatchVotesForParkingLot[STRAIGHT].push_back( vote );
+  vote.angleOffset = mAngleRegionSize;
+  mPatchVotesForParkingLot[STRAIGHT].push_back( vote );
+  vote.angleOffset = -mAngleRegionSize;
+  mPatchVotesForParkingLot[STRAIGHT].push_back( vote );
   vote.size.width = length*1.5;
+  vote.angleOffset = 0;
   mPatchVotesForParkingLot[STRAIGHT].push_back( vote );
   // Also for "cross" PARKING patches:
-  width = 1.2*PATCH_LENGTHS[PARKING]*mMeters2Pixels;
+  width = 1.2*PATCH_LENGTHS_PARKING_CROSS*mMeters2Pixels;
   length = 0.02*mMeters2Pixels;
   vote.pos.y = 0;
-  vote.pos.x = -(PATCH_WIDTHS[STRAIGHT]*0.5 + PATCH_LENGTHS[PARKING]*0.5)*mMeters2Pixels;
+  vote.pos.x = -(PATCH_WIDTHS[STRAIGHT]*0.5 + PATCH_LENGTHS_PARKING_CROSS*0.5)*mMeters2Pixels;
   vote.size.height = width;
   vote.size.width = length;
   //vote.weight = mMinimumVoteForDetectionParkingLot-2*mMinimumVote;
-  vote.weight = mMinimumVote;   // Minimal vote. This is only used for lateral localization.
+  vote.weight = 3*mMinimumVote;   // Minimal vote. This is only used for lateral localization.
+  //vote.weight = mMinimumVoteForDetectionParkingLot - 2*mMinimumVote;   // Minimal vote. This is only used for lateral localization.
   vote.angleOffset = M_PI*0.5;
   mPatchVotesForParkingLot[STRAIGHT].push_back( vote );
+  vote.angleOffset = M_PI*0.5+mAngleRegionSize;
+  mPatchVotesForParkingLot[STRAIGHT].push_back( vote );
+  vote.angleOffset = M_PI*0.5-mAngleRegionSize;
+  mPatchVotesForParkingLot[STRAIGHT].push_back( vote );
+
+  // Same thing again for other side:
+  width = 0.02*mMeters2Pixels;
+  length = PATCH_LENGTHS_PARKING_PARALLEL*mMeters2Pixels;
+  vote.pos.x = 0;
+  vote.pos.y = (PATCH_WIDTHS[STRAIGHT]*0.5 + PATCH_WIDTHS_PARKING_PARALLEL*0.5)*mMeters2Pixels;
+  vote.weight = 1*mMinimumVote;   // Minimal vote. This is only used for lateral localization.
+  //vote.weight = mMinimumVoteForDetectionParkingLot - 2*mMinimumVote;   // Minimal vote. This is only used for lateral localization.
+  vote.size.height = width;
+  vote.size.width = length;
+  vote.angleOffset = 0;
+  mPatchVotesForParkingLot[STRAIGHT].push_back( vote );
+  vote.angleOffset = mAngleRegionSize;
+  mPatchVotesForParkingLot[STRAIGHT].push_back( vote );
+  vote.angleOffset = -mAngleRegionSize;
+  mPatchVotesForParkingLot[STRAIGHT].push_back( vote );
+  vote.size.width = length*1.5;
+  vote.angleOffset = 0;
+  mPatchVotesForParkingLot[STRAIGHT].push_back( vote );
+  // Also for "cross" PARKING patches:
+  width = 1.2*PATCH_LENGTHS_PARKING_CROSS*mMeters2Pixels;
+  length = 0.02*mMeters2Pixels;
+  vote.pos.y = 0;
+  vote.pos.x = (PATCH_WIDTHS[STRAIGHT]*0.5 + PATCH_LENGTHS_PARKING_CROSS*0.5)*mMeters2Pixels;
+  vote.size.height = width;
+  vote.size.width = length;
+  //vote.weight = mMinimumVoteForDetectionParkingLot-2*mMinimumVote;
+  vote.weight = 3*mMinimumVote;   // Minimal vote. This is only used for lateral localization.
+  //vote.weight = mMinimumVoteForDetectionParkingLot - 2*mMinimumVote;   // Minimal vote. This is only used for lateral localization.
+  vote.angleOffset = M_PI*0.5;
+  mPatchVotesForParkingLot[STRAIGHT].push_back( vote );
+  vote.angleOffset = M_PI*0.5+mAngleRegionSize;
+  mPatchVotesForParkingLot[STRAIGHT].push_back( vote );
+  vote.angleOffset = M_PI*0.5-mAngleRegionSize;
+  mPatchVotesForParkingLot[STRAIGHT].push_back( vote );
+
+
 
   ////////////////////////////////////////////
   // Let CROSS_SECTION patches vote for STRAIGHT patches
@@ -1421,15 +1526,22 @@ void StreetPatcher::insertTrafficSign( TrafficSignPtr trafficSign )
       cv::Point2f( x, y ),
       cv::Size( radius, radius ),
       trafficSign->getYaw()*180/M_PI,
-      10, 80,
+      25, 65,
       cv::Scalar( voteAmount ), 
-      0.3*mMeters2Pixels );
+      0.15*mMeters2Pixels );
 
   cv::ellipse( mHoughSpaceForTrafficSigns,
       cv::Point2f( x, y ),
       cv::Size( radius, radius ),
       trafficSign->getYaw()*180/M_PI,
-      25, 65,
+      35, 55,
+      cv::Scalar( voteAmount + mMinimumVote ), 
+      2 );
+  cv::ellipse( mHoughSpaceForTrafficSigns,
+      cv::Point2f( x, y ),
+      cv::Size( radius, radius ),
+      trafficSign->getYaw()*180/M_PI,
+      40, 50,
       cv::Scalar( voteAmount + mMinimumVote ), 
       2 );
 
@@ -1459,7 +1571,7 @@ void StreetPatcher::setImage( cv::Mat image, const ExtendedPose2d &carPose )
   LOGGING_INFO( lanedetectionLogger, "Search Features Per line: SearchForCorosssections: "
                 << mSearchForCrossSections<< " SearchForParkingLots: "<<mSearchForParkingLots << endl );
   mHaarFilter.calculateFeaturesPerLine(
-        mSearchForCrossSections,
+        true,
         mSearchForParkingLots);
 
 
@@ -1633,6 +1745,16 @@ ParkingType StreetPatcher::getParkingSpaceDirection( cv::Mat& image)
   }
 
   return PARKING_TYPE_UNKNOWN;	// just in case...
+}
+
+void StreetPatcher::setBoostCrossSectionFeatures( bool boost )
+{
+  if( boost )
+    LOGGING_INFO( lanedetectionLogger, "ENABLING BOOST OF HALT LINES." << endl );
+  else
+    LOGGING_INFO( lanedetectionLogger, "DISABLING BOOST OF HALT LINES." << endl );
+  
+  mBoostCrossSectionFeatures = boost;
 }
 
 }   // namespace

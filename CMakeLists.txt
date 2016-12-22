@@ -5,21 +5,15 @@ SET(OADRIVE_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_BINA
 SET(OADRIVE_IDL_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/src" CACHE INTERNAL "")
 SET(OADRIVE_IDE_FOLDER "oadrive")
 
-# TODO: place a generic find script into icmaker.
-#FIND_PACKAGE(aruco)
-FIND_PACKAGE(aruco
-  PATHS "/usr/local/lib/cmake"
-  "/opt/aruco/1.3.0/lib"
-  CONFIGS
-  Findaruco.cmake)
-
-FIND_PACKAGE(redisclient PATHS ".")
+# find aruco and redisclient
+FIND_PACKAGE(aruco)
+FIND_PACKAGE(redisclient)
 
 ICMAKER_REGISTER_PACKAGE(oadrive)
 
 ADD_SUBDIRECTORY(src/oadrive_core)
-ADD_SUBDIRECTORY(src/oadrive_control)
 ADD_SUBDIRECTORY(src/oadrive_util)
+ADD_SUBDIRECTORY(src/oadrive_control)
 #ADD_SUBDIRECTORY(src/oadrive_trajectory)
 ADD_SUBDIRECTORY(src/oadrive_world)
 ADD_SUBDIRECTORY(src/oadrive_lanedetection)

@@ -93,6 +93,9 @@ enum Orientations {
 #define PARKING_MIN_X_OFFSET_LEFT 320
 #define PARKING_MIN_X_OFFSET_RIGHT 100
 
+// detect crossroad only in image
+#define DETECT_CROSSROAD_Y_FROM_TOP 140
+
 class HaarFilter {
 public:
   //! constructor of haar filter initializes all features according to the provided meters per pixel value

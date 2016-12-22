@@ -74,7 +74,7 @@ class EnvironmentPainter;
 
 #define OBSTACLE_FULL_BREAK_THRES 0.1
 
-#define OBSTACLE_MERGING_DIST 0.05
+#define OBSTACLE_MERGING_DIST 0.08
 
 using namespace oadrive::core;
 using namespace oadrive::world;

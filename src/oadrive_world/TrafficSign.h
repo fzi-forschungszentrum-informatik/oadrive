@@ -49,7 +49,7 @@ const float TRAFFIC_SIGN_DIST_TO_CROSS_SECTION = 1.031;
 const float TRAFFIC_SIGN_MAX_DIST_TO_STRAIGHT = 0.9;
 
 //! Signs detected beyond this distance to the car will be ignored (they're often inexact).
-const float TRAFFIC_SIGN_DETECTION_RADIUS = 3.5;
+const float TRAFFIC_SIGN_DETECTION_RADIUS = 4.5;
 
 class TrafficSign;	// predefine so shared_ptr can use it
 typedef boost::shared_ptr<TrafficSign> TrafficSignPtr;		// define before class because it uses the PatchPtr

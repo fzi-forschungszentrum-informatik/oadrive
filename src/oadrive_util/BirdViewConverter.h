@@ -32,6 +32,12 @@
 #define DEPTH_IMAGE_WIDTH 320
 namespace oadrive {
 namespace util {
+/*!
+   \brief The BirdViewConverter class
+   This class converts the image into a Birdview image via the warp perspective. (It is speed up via remap)
+   You must provide a special camera calibration file which contains a warp matrix (This is not the matrix wich is provided by the normal opencv camera calibration) This file can be generated with
+    the test test_oadrive_birdViewCal.cpp or the class CameraCalibration
+ */
 class BirdViewConverter
 {
 public:

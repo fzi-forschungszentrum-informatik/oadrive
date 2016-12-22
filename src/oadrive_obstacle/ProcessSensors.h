@@ -29,7 +29,9 @@
 #include <oadrive_obstacle/ProcessDepth.h>
 namespace oadrive{
 namespace obstacle{
-
+/*!
+   \brief The ProcessSensors class generates objects from the sensors and put them into the environment. The objects are peridically delete in the enviroment.
+ */
 class ProcessSensors
 {
 public:
@@ -37,12 +39,15 @@ public:
   //! \brief ProcessDepthSensor Processes the Depth image and add found objects to the enviroment
   //! \param image depthimage
   void processDepthSensor(cv::Mat image);
-
+  //! \brief Add new values from the USSensors. This function is thread safe (mutex lock). The values are buffered and will be process if processUsSensor is called. They are bufferd in a ring buffer
   void setNewUsSensorValues(usSensor sensorValues);
+  //! \brief process the buffered US Sensor values from setNewUsSensorValues; the buffer is not cleared (they are bufferd in a ring buffer). Be carefull with the differnt threads. This function should only called in the Image thread.
   void processUsSensor();
+  //! \brief set the length of the US Buffer
   void setUsSensorBufferLengtg( int length ) { mUsSensorBufferLength = length; }
   usSensor getQuantilesOfRecentUsSensorValues();
   ProcessDepth* getDepthImageProcessor(){return &mProcessDepth;}
+  //! \brief put all the objects into the environment
   void mergeObjectsToEnviroment(ExtendedPose2dVectorPtr objects, oadrive::world::SensorType sensorType);
   void convertObjectsToWorld(ExtendedPose2dVectorPtr &objects, const ExtendedPose2d &carPos);
 

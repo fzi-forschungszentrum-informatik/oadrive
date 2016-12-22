@@ -52,9 +52,12 @@ enum enumUSSensorLimits {
   LIMIT_FOR_SEARCH_PARKING,
   LIMIT_FOR_OVERTAKING,
   LIMIT_FOR_DRIVING,
+  LIMIT_FOR_PED_CROSSING,
   LIMIT_DEACTIVATE
 };
-
+/*!
+   \brief The ProcessUS class converts the distances from the US-Sensors to car postions. You need a config file to use this class. You can generate this file with getValuesFromCons and saveCal
+ */
 class ProcessUS
 {
 public:

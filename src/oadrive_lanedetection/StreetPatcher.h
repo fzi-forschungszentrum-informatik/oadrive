@@ -104,12 +104,15 @@ public:
   void setSearchCrossSections( bool search );
   void setSearchParkingLots( bool search );
 
+  // Fix for Roundabouts:
+  void setBoostCrossSectionFeatures( bool boost );
+
   /*! Set a vote by using some a-priori knowledge:
    * This vote can be set when you know approximately where the street should be.
    * \param pose The position of where you believe the Street to be. A lengthly vote
    * 		will be cast into the corresponding hough-space. */
   void setAPrioriVote( const oadrive::core::ExtendedPose2d &pose,
-      enumAPrioriStrength strength = STRENGTH_HIGH );
+      enumAPrioriStrength strength = STRENGTH_HIGH, bool inAllDirections = false );
 
   bool getIsInitialized() { return mHaarFilter.getInitialized(); }
 
@@ -254,12 +257,15 @@ private:
   oadrive::core::ExtendedPose2d mAPrioriPose;
   bool mAPrioriInfoGiven;
   enumAPrioriStrength mAPrioriStrength;
+  bool mAPrioriVoteInAllDirections;
 
   float mCurrentFramesPerMeter;
 
   bool mCarIsMoving;
 
   bool mDebugMode;
+
+  bool mBoostCrossSectionFeatures;
 
 public:
   // use a proper alignment when calling the constructor.

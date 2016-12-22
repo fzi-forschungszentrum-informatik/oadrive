@@ -287,15 +287,18 @@ void HaarFilter::calculateFeaturesPerLine(bool detectCrossroad /*= false*/, bool
       maxCenter = max(weightCenterY, max(weightCenterRotatedY, weightCenterRotatedX));
 
       // temporarily save responses of cross road vertical line features
-      if(detectCrossroad) {
+      /*if(detectCrossroad && y > DETECT_CROSSROAD_Y_FROM_TOP) {
         weightCrossroadY = mHaarFeatureCrossroadLineY.haarFeature(y, x);
-      }
+      } else {*/
+        weightCrossroadY = 0;
+      //}
 
       // normalize absolute responses such that they are comparable
       absoluteMaxSide = (float)maxSide / factorSide2Center;
       absoluteMaxCenter = maxCenter;
-      absoluteMaxCrossroad = (float)weightCrossroadY / factorCrossroad2Center;
-      absoluteMax = max(absoluteMaxCenter, max(absoluteMaxSide, absoluteMaxCrossroad));
+     // absoluteMaxCrossroad = (float)weightCrossroadY / factorCrossroad2Center;
+      //absoluteMax = max(absoluteMaxCenter, max(absoluteMaxSide, absoluteMaxCrossroad));
+      absoluteMax = max(absoluteMaxCenter, absoluteMaxSide);
 
       /*if(totalMaxSide < absoluteMaxSide) {
         totalMaxSide = absoluteMaxSide;
@@ -310,9 +313,9 @@ void HaarFilter::calculateFeaturesPerLine(bool detectCrossroad /*= false*/, bool
         saveHighestResponses(highestResponsesSide, currentAmountResponsesSide, weightSideRotatedY, x, y, ORIENTATION_Y_ROTATED);
         saveHighestResponses(highestResponsesSide, currentAmountResponsesSide, weightSideRotatedX, x, y, ORIENTATION_X_ROTATED);
       }
-      else if(detectCrossroad && absoluteMax == absoluteMaxCrossroad) {
+      /*else if(detectCrossroad && absoluteMax == absoluteMaxCrossroad) {
         saveHighestResponses(highestResponsesCrossroad, AMOUNT_RESPONSES_CROSSROAD, weightCrossroadY, x, y, ORIENTATION_Y);
-      }
+      }*/
       else {
         saveHighestResponses(highestResponsesCenter, currentAmountResponsesCenter, weightCenterY, x, y, ORIENTATION_Y);
         saveHighestResponses(highestResponsesCenter, currentAmountResponsesCenter, weightCenterRotatedY, x, y, ORIENTATION_Y_ROTATED);
@@ -329,9 +332,9 @@ void HaarFilter::calculateFeaturesPerLine(bool detectCrossroad /*= false*/, bool
       yMax = min(mInputSize.height, min(y1, y2)) + maxOffsetX;
       for (int y = maxOffsetY; y < yMax - 1; y += STEPSIZE_X ) {
         // washed out lines (horizontal lines are always bigger than in real)
-        if(y < 150) {
+        if(y < DETECT_CROSSROAD_Y_FROM_TOP) {
           // side line
-          weightSideX = mHaarFeatureCrossroadLineX.haarFeature(y, x);
+         /* weightSideX = mHaarFeatureCrossroadLineX.haarFeature(y, x);
           weightSideRotatedY = mHaarFeatureCrossroadLineRotatedY.haarFeature(y, x);
           weightSideRotatedX = mHaarFeatureCrossroadLineRotatedX.haarFeature(y, x);
           absoluteMaxSide = (float)max(weightSideX, max(weightSideRotatedY, weightSideRotatedX)) / factorCrossroad2Center;
@@ -346,7 +349,7 @@ void HaarFilter::calculateFeaturesPerLine(bool detectCrossroad /*= false*/, bool
           absoluteMaxCrossroad = (float)max(weightCrossroadX, max(weightCrossroadRotatedY, weightCrossroadRotatedX)) / factorCrossroadWashedOut2Center;
           weightCrossroadX = weightCrossroadX / factorCrossroadWashedOut2Crossroad;
           weightCrossroadRotatedY = weightCrossroadRotatedY / factorCrossroadWashedOut2Crossroad;
-          weightCrossroadRotatedX = weightCrossroadRotatedX / factorCrossroadWashedOut2Crossroad;
+          weightCrossroadRotatedX = weightCrossroadRotatedX / factorCrossroadWashedOut2Crossroad;*/
         }
         else {
           // side line
@@ -372,7 +375,11 @@ void HaarFilter::calculateFeaturesPerLine(bool detectCrossroad /*= false*/, bool
         absoluteMax = max(absoluteMaxSide, absoluteMaxCrossroad);
 
         if(absoluteMax == absoluteMaxSide) {
-          saveHighestResponses(highestResponsesSide, currentAmountResponsesSide, weightSideX, x, y, ORIENTATION_X);
+          if(detectParkingLot) {
+            saveHighestResponses(highestResponsesParkingLine, currentAmountResponsesParkingLine, weightSideX, x, y, ORIENTATION_X);
+          } else {
+            saveHighestResponses(highestResponsesSide, currentAmountResponsesSide, weightSideX, x, y, ORIENTATION_X);
+          }
           saveHighestResponses(highestResponsesSide, currentAmountResponsesSide, weightSideRotatedY, x, y, ORIENTATION_Y_ROTATED);
           saveHighestResponses(highestResponsesSide, currentAmountResponsesSide, weightSideRotatedX, x, y, ORIENTATION_X_ROTATED);
         } else {

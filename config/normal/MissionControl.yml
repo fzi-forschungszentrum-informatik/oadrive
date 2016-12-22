@@ -7,7 +7,7 @@ SPEED_BOOST: 0.9
 
 ACC: 1 
 Overtaking: 1
-OvertakingStopEarly: 0
+OvertakingStopEarly: 1
 
-WAITING_ROUNDS: 10
+WAITING_ROUNDS: 7
 

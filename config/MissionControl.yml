@@ -2,12 +2,12 @@
 SPEED_SUPER_SLOW: 0.16
 SPEED_SLOW: 0.2
 SPEED_PARKING: 0.3
-SPEED_NORMAL: 0.60
+SPEED_NORMAL: 0.55
 SPEED_BOOST: 1.0
 
-ACC: 0
-Overtaking: 0
-OvertakingStopEarly: 0
+ACC: 1
+Overtaking: 1
+OvertakingStopEarly: 1
 
 WAITING_ROUNDS: 10
 

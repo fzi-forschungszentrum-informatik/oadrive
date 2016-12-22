@@ -46,6 +46,13 @@ Patch::Patch( PatchType type, const oadrive::core::ExtendedPose2d &pose )
 {
   //if( mPatchType == CROSS_SECTION )
   //mAction = DD_LEFT;
+ 
+  // Ugly Fix because we get too many
+  if( type == PARKING )
+  {
+    setWidth( PATCH_WIDTHS[type] - 0.10 );
+    setHeight( PATCH_LENGTHS[type] - 0.10 );
+  }
 
   setType(PATCH);
   updateTrajectory();

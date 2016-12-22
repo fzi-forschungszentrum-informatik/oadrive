@@ -28,20 +28,66 @@
 
 namespace oadrive {
 namespace util {
-
+/*!
+   \brief The Config class read the config files (yaml file format).
+You have to init this class with the path and the carname.
+It search first in the car folder. If there is no file avaible it searchs in the config folder.
+ */
 class Config
 {
   public:
+  /*!
+       \brief setConfigPath sets the config Path
+       \param folder path to the config folder (It must contain a folder with the carname)
+       \param carName name of the car (you can have differnt car folders)
+       \return
+     */
     static std::string setConfigPath( boost::filesystem::path folder, std::string carName );
-
+    /*!
+       \brief getDouble returns a double from the config file
+       \param category config file name (without .yml)
+       \param key name of the config
+       \param defaultVal value which is returned if the entry isn't available
+       \return
+     */
     static double getDouble( std::string category, std::string key, double defaultVal );
+    /*!
+       \brief getInt returns a Int from the config file
+       \param category config file name (without .yml)
+       \param key name of the config
+       \param defaultVal value which is returned if the entry isn't available
+       \return
+     */
     static int getInt( std::string category, std::string key, int defaultVal );
+    /*!
+       \brief getString returns a String from the config file
+       \param category config file name (without .yml)
+       \param key name of the config
+       \param defaultVal value which is returned if the entry isn't available
+       \return
+     */
     static std::string getString( std::string category, std::string key, std::string defaultVal );
+    /*!
+       \brief getMat returns a opencv Matrix from the config file
+       \param category file name
+       \param key name of the config in the file
+       \return
+     */
     static cv::Mat getMat( std::string category, std::string key );
+    /*!
+       \brief getBool returns a bool from the config file
+       \param category config file name (without .yml)
+       \param key name of the config
+       \param defaultVal value which is returned if the entry isn't available
+       \return
+     */
     static bool getBool( std::string category, std::string key, bool defaultVal );
 
     static boost::filesystem::path getConfigFile( std::string category );
-
+    /*!
+       \brief getCarName returns the car name wich is provided  which is provided by setConfigPath()
+       \return car name
+     */
     static std::string getCarName();
   private:
     Config();   // private constructor -> "static class"

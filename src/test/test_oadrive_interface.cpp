@@ -33,16 +33,9 @@ struct usDataWithFrame
 
 void showDebugOutput( Interface* interface, cv::Mat image,cv::Mat depthImage, ExtendedPose2d carPose )
 {
-  //cv::Mat output( image.size(), CV_8UC3 );
-  //cv::Mat channels[4];
-  //image.copyTo( output );
 
+    //generate Debug Images
   cv::Mat features = interface->generateDebugFeatureImage();
-  //cv::split( features, channels );
-  //cv::Mat sum( output.size(), CV_8UC3 );
-  //cv::bitwise_or( output, 0, sum, 255 - channels[3] );
-  //sum = sum + features;
-
   cv::Mat houghSpace = interface->getPatcher()->generateHoughSpaceDebugImage();
 
   cv::Mat map =
@@ -62,7 +55,7 @@ void showDebugOutput( Interface* interface, cv::Mat image,cv::Mat depthImage, Ex
 
 }
 
-bool readUsData(std::string stringData, usDataWithFrame &usData)
+bool readUsDataLine(std::string stringData, usDataWithFrame &usData)
 {
   std::size_t pos = stringData.find("Frame: ");
   if (pos != std::string::npos)
@@ -183,7 +176,7 @@ int main(int argc, char** argv)
 
     if ( argc > 1 )
     {
-      printf("ESC to quit, any other key to continue to next image.\n");
+      printf("ESC to quit,a for automatic stepping, r for reset, s for new initial vote and any other key to continue to next image.\n");
 
       std::vector<cv::String> filenames;
       cv::String folder = cv::String(argv[1]);
@@ -234,24 +227,12 @@ int main(int argc, char** argv)
         std::cout << "Send Jury Get Ready" << std::endl;
       interface.setJuryCommand( action_GETREADY, 0 );
 
-      bool readAscii = false;
-      if( argc > 4 )
-      {
-        if( strcmp( "--ascii", argv[4] ) == 0 );
-        readAscii = true;
-      }
-
-      // Test Debug Points:
-      /*for( float f = 3; f < 6; f += 0.1 )
-                          interface.getEnvironment()->addDebugPoint(
-                          ExtendedPose2d( f, 1, M_PI*0.5 ), cv::Scalar( 255,128,128 ), f, true );*/
-
       std::vector<ExtendedPose2d> carPoses;
       // Check if there is a carPose.txt in the folder. If so, open it and read the car poses:
       std::string filename = folder;
       filename.append( "/carPose.txt" );
-      if( !readAscii )	// default: car poses are written in binary
-      {
+//      car poses are written in binary
+
         std::ifstream file( filename.c_str(), std::ios::binary );
         if( file.is_open() )
         {
@@ -270,21 +251,7 @@ int main(int argc, char** argv)
         } else {
           std::cout << "WARNING: Car pose file not found." << std::endl << "\tWill use 0,0,0 as car pose for every frame." << std::endl;
         }
-      } else {	// old method: car poses written in ascii (deprecated, left here to be able to read old datasets).
 
-        std::ifstream file( filename.c_str() );
-        if( file.is_open() )
-        {
-          std::cout << "Found car pose file (ascii)!" << std::endl;
-          float x, y, yaw;
-          while( file >> x >> y >> yaw )
-          {
-            carPoses.push_back( ExtendedPose2d( x, y, yaw ) );
-          }
-        } else {
-          std::cout << "WARNING: Car pose file not found." << std::endl << "\tWill use 0,0,0 as car pose for every frame." << std::endl;
-        }
-      }
 
       std::string filenameUsData = folder;
       filenameUsData.append("/usLog.txt");
@@ -297,7 +264,7 @@ int main(int argc, char** argv)
           while(std::getline(fileUsData,line))
           {
             usDataWithFrame usData;
-            if(readUsData(line,usData))
+            if(readUsDataLine(line,usData))
             {
               usSensors.push_back(usData);
             }
@@ -368,7 +335,6 @@ int main(int argc, char** argv)
           std::cout<<"Last file was: "<<filenames[i-1]<<std::endl;
           break;
         }
-        //interface.incrementTime(TIME_PER_FRAME);
         interface.setCarPose( carPose );
 
         std::cout << "Steering: " << interface.getSteering() <<
@@ -429,6 +395,18 @@ int main(int argc, char** argv)
         {
           animate = !animate;
         }
+        else if ( char(code) == 83 || char(code) == 115 )		// s to reset
+        {
+          ExtendedPose2d carPose = Environment::getInstance()->getCarPose();
+          double dx = 1.0;		// 1 meter in front of me
+          double dy = 0.23;		// 0.23 meters next me
+          ExtendedPose2d votePose(
+              carPose.getX() + dx*cos( carPose.getYaw() ) - dy*sin( carPose.getYaw() ),
+              carPose.getY() + dx*sin( carPose.getYaw() ) + dy*cos( carPose.getYaw() ),
+              carPose.getYaw() );
+          interface.getStreetPatcher()->setAPrioriVote( votePose );
+
+        }
 #endif
         if(i == startImage){
             std::cout << "Send Jury Start" << std::endl;
@@ -436,17 +414,12 @@ int main(int argc, char** argv)
         }
       }
 
-      /*Trajectory2d finalTraj = interface.getEnvironment()->getTrajectory();
-                          std::string trajFileName( "/tmp/recordedData/finalTrajectory.txt" );
-                          std::ofstream trajFile( trajFileName.c_str() );
-                          trajFile << finalTraj;
-                          trajFile.close();*/
 
     } else {
-      std::cout << "usage: test_oadrive_lanedetection <Path> <startnumber> [--ascii]" << std::endl;
-      std::cout << "\t(where <Path> is a folder with bird view images in it" << std::endl;
-      std::cout << "\tand startnumber is the image at which to start)" << std::endl;
-      std::cout << "\tAdd the --ascii command at the end to read car poses in ASCII." << std::endl;
+      std::cout << "usage: test_oadrive_interface <Path> carname startnumber" << std::endl;
+      std::cout << "\t(where <Path> is a folder with bird view images in it," << std::endl;
+      std::cout << "\t carname is Goffin or Inka" << std::endl;
+      std::cout << "\tand startnumber is the image at which to start (optional))" << std::endl;
     }
 
     return 0;

@@ -103,7 +103,10 @@ struct StateOvertakingHalt;
 struct StateOvertakingGo;
 struct StateOvertakingBack;
 struct StateOvertakingReverse;
+struct StateOvertakingSmallForward;
+struct StateOvertakingThroughConstruction;
 struct StateUTurn;
+struct StatePedestrianCrossing;
 
 // Define all possible events:
 struct EvGetReady : sc::event< EvGetReady > {};
@@ -176,6 +179,7 @@ struct EvTimerTrajectoryFree : sc::event< EvTimerTrajectoryFree > {};
 struct EvTimerTrajectoryFreeAgain : sc::event< EvTimerTrajectoryFreeAgain > {};
 struct EvTimerDriveWithNoTrajectory : sc::event< EvTimerDriveWithNoTrajectory > {};
 struct EvTimerSetSmallForwardTraj : sc::event< EvTimerSetSmallForwardTraj > {};
+struct EvEnteredPedestrianCrossingRegion : sc::event< EvEnteredPedestrianCrossingRegion > {};
 
 
 struct EvUTurn : sc::event< EvUTurn > {};
@@ -224,6 +228,8 @@ struct StateMachine : sc::state_machine< StateMachine, StateInit >
     mOvertakeTemporaryDisabled = false;
     mOvertakeIgnoreWhileDriving = false;
     mHasBackedUp = false;
+
+    mBackedUpOvertakeCount = 0;
 
     if( !mACCEnabled )
     {
@@ -296,6 +302,9 @@ struct StateMachine : sc::state_machine< StateMachine, StateInit >
   void setCrossingEventRegion( EventRegionPtr region ) { mCurrentCrossingEventRegion = region; }
   EventRegionPtr getCrossingEventRegion() { return mCurrentCrossingEventRegion; }
 
+  void setBackedUpOvertakeCount( int backedUpOvertakeCount ) { mBackedUpOvertakeCount = backedUpOvertakeCount; }
+  int getBackedUpOvertakeCount() { return mBackedUpOvertakeCount; }
+
   private:
   ManeuverListPtr mManeuverList;
   IControl4MC* mController;
@@ -313,6 +322,7 @@ struct StateMachine : sc::state_machine< StateMachine, StateInit >
   bool mOvertakeStopEarly;
 
   unsigned int mWaitingRoundsAtCrossing;
+  int mBackedUpOvertakeCount;
 
   // Remember various things from events for the states (because of deep_history):
   ExtendedPose2d mCurrentOvertakingPose;
@@ -419,7 +429,6 @@ struct StateInit : sc::state< StateInit, StateMachine >
     if(context< StateMachine >().getManeuverList()->isDummy() == false) {
       return transit< StateWorking >();
     } else {
-
       LOGGING_INFO( mcLogger, "[SM] Can not go to ready mode because Maneuverlist ist not set. Please set it!" << endl);
       return discard_event();
     }
@@ -697,9 +706,16 @@ struct StateDriving : sc::state< StateDriving, StateFollowTrajectory >
     }
     context< StateMachine >().setOvertakeIgnoreWhileDriving(false);
 
+
+
     // Search for CROSS_SECTIONs while driving:
     context< StateMachine >().getStreetPatcher()->setSearchCrossSections( true );
 
+    //Go directly into search parking mode, if we shall park next (since we directly have to park) or
+    if ( context< StateMachine >().getCurrentManeuver() == MANEUVER_PARKING_CROSS || context< StateMachine >().getCurrentManeuver() == MANEUVER_PARKING_PARALLEL ){
+      LOGGING_INFO( mcLogger, "[SM] \tNext maneuver is parking maneuver. Start searching for parking lots." << endl );
+      post_event( EvEnteredParkingSignRegion(EventRegionPtr()) );
+    }
     // If we've already found a parking sign region, run the event again:
     // (This can happen when we've just finished crossing, but there's already a
     // parking sign ahead).
@@ -723,6 +739,7 @@ struct StateDriving : sc::state< StateDriving, StateFollowTrajectory >
     sc::custom_reaction< EvEnteredObstacleRegion >,
     sc::custom_reaction< EvEnteredParkingSignRegion >,
     sc::custom_reaction< EvEnteredBlinkingRegion >,
+    sc::transition< EvEnteredPedestrianCrossingRegion, StatePedestrianCrossing >,
     sc::transition< EvUTurn, StateUTurn >,
     sc::custom_reaction< EvSpeedBoost>
       > reactions;
@@ -768,7 +785,7 @@ struct StateDriving : sc::state< StateDriving, StateFollowTrajectory >
       return discard_event();
     }
 
-    if(( ev.eventRegion->getEventRegionType() == OBSTACLE_REGION && !context< StateMachine >().hasBackedUp() ) && !context< StateMachine >().isOvertakingStopEarly() ){
+    if(( ev.eventRegion->getEventRegionType() == OBSTACLE_REGION && !context< StateMachine >().hasBackedUp() ) ){
       return discard_event();
     }
 
@@ -839,18 +856,28 @@ struct StateWaitingForTrajectoryHalting : sc::state< StateWaitingForTrajectoryHa
     unsigned int waitingTurns = context<StateWaitingForTrajectory>().mWaitingTurns;
     bool hasFirstAPrioriVote =
         context<StateMachine>().getStreetPatcher()->hasFirstAPrioriVote();
-    if( ! hasFirstAPrioriVote ) {
-      LOGGING_INFO( mcLogger, "[SM]\tAdding high a-priori vote." << endl);
-      context< StateMachine >().getStreetPatcher()->setAPrioriVote( votePose, STRENGTH_HIGH );
-    } else if( waitingTurns == 0 ) {
-      LOGGING_INFO( mcLogger, "[SM]\tAdding low a-priori vote." << endl);
-      context< StateMachine >().getStreetPatcher()->setAPrioriVote( votePose, STRENGTH_LOW );
-    } else if( waitingTurns == 1 ) {
-      LOGGING_INFO( mcLogger, "[SM]\tAdding medium a-priori vote." << endl);
-      context< StateMachine >().getStreetPatcher()->setAPrioriVote( votePose, STRENGTH_MEDIUM );
+
+    if( (context< StateMachine >().getPreviousManeuer() != MANEUVER_PULLOUT_LEFT) &&
+        (context< StateMachine >().getPreviousManeuer() != MANEUVER_PULLOUT_RIGHT) )
+    {
+      // Emergency Mode. Set high a-priori vote in all directions:
+        context< StateMachine >().getStreetPatcher()->setAPrioriVote(
+            votePose, STRENGTH_HIGH, true );
     } else {
-      LOGGING_INFO( mcLogger, "[SM]\tAdding high a-priori vote." << endl);
-      context< StateMachine >().getStreetPatcher()->setAPrioriVote( votePose, STRENGTH_HIGH );
+
+      if( ! hasFirstAPrioriVote ) {
+        LOGGING_INFO( mcLogger, "[SM]\tAdding high a-priori vote." << endl);
+        context< StateMachine >().getStreetPatcher()->setAPrioriVote( votePose, STRENGTH_HIGH );
+      } else if( waitingTurns == 0 ) {
+        LOGGING_INFO( mcLogger, "[SM]\tAdding low a-priori vote." << endl);
+        context< StateMachine >().getStreetPatcher()->setAPrioriVote( votePose, STRENGTH_LOW );
+      } else if( waitingTurns == 1 ) {
+        LOGGING_INFO( mcLogger, "[SM]\tAdding medium a-priori vote." << endl);
+        context< StateMachine >().getStreetPatcher()->setAPrioriVote( votePose, STRENGTH_MEDIUM );
+      } else {
+        LOGGING_INFO( mcLogger, "[SM]\tAdding high a-priori vote." << endl);
+        context< StateMachine >().getStreetPatcher()->setAPrioriVote( votePose, STRENGTH_HIGH );
+      }
     }
 
     context< StateMachine >().getTrajectoryFactory()->setGenerateFromPatches();
@@ -1084,11 +1111,17 @@ struct StateCrossingBlink : sc::state< StateCrossingBlink, StateCrossing >
           {
             patch->setAction( DD_LEFT );
             LOGGING_INFO( mcLogger, "[SM] Reached blinking region, blinking left" << endl);
+
+            // This shouldn't do anything, but just in case, disable boosting:
+            context< StateMachine >().getStreetPatcher()->setBoostCrossSectionFeatures( false );
             // Going left? Then blink!
             context< StateMachine >().getController()->setLights(BLINK_LEFT_LIGHT,true);
           } else if ( context< StateMachine >().getCurrentManeuver() == MANEUVER_RIGHT ) {
             patch->setAction( DD_RIGHT );
             LOGGING_INFO( mcLogger, "[SM] Reached blinking region, blinking right" << endl);
+
+            // We might be leaving a Roundabout, so stop boosting!
+            context< StateMachine >().getStreetPatcher()->setBoostCrossSectionFeatures( false );
             // Going right? Then blink!
             context< StateMachine >().getController()->setLights(BLINK_RIGHT_LIGHT,true);
           } else if ( context< StateMachine >().getCurrentManeuver() == MANEUVER_STRAIGHT ) {
@@ -1266,6 +1299,13 @@ struct StateCrossingHalt : sc::state< StateCrossingHalt, StateCrossing >
     }
     else if(trafficSign->getSignType() == MARKER_ID_UNMARKEDINTERSECTION) {
       rightBeforeLeft = true;
+    }
+    else if(trafficSign->getSignType() == MARKER_ID_ROUNDABOUT) {
+      //rightBeforeLeft = true;
+      // Roundabout. We can't check to the left anyways, so GOGOGO!
+      // Start boosting halt lines!
+      context< StateMachine >().getStreetPatcher()->setBoostCrossSectionFeatures( true );
+      return transit< StateCrossingDriving >();
     }
 
     if(rightBeforeLeft) { //we dont have a traffic sign aka rechts vor links
@@ -1613,14 +1653,21 @@ struct StateOvertakingHalt : sc::state< StateOvertakingHalt, StateOvertaking >
 
 
     int stopTime = 10000;
-    if(context< StateMachine >().hasBackedUp() || context< StateMachine >().isOvertakingStopEarly()) {
+    if(context< StateMachine >().hasBackedUp() ) {
       context<StateMachine>().getDriverModule()->halt();
       context< StateMachine >().setHasBackedUp(false);
       stopTime = 1000;
+    }else if( context< StateMachine >().isOvertakingStopEarly()) {
+      context<StateMachine>().getDriverModule()->halt();
+      context< StateMachine >().setHasBackedUp(false);
+      stopTime = 10000;
     }
     else{
       context< StateMachine >().getDriverModule()->drive();  // just in case
     }
+
+    // disable detection of cross sections
+    context< StateMachine >().getStreetPatcher()->setSearchCrossSections( false );
 
     freeCounter = 0;
 
@@ -1698,8 +1745,6 @@ struct StateOvertakingGo : sc::state< StateOvertakingGo, StateOvertaking >
 
     stopCounter = 0;
 
-    context< StateMachine >().getStreetPatcher()->setSearchCrossSections( false );
-
     context< StateMachine >().getController()->setLights( BLINK_LEFT_LIGHT, true );
     mTimerIDChecking = context< StateMachine >().getController()->getTimer()->setTimer(
         250, TIMER_TYPE_CHECK_TRAJECTORY_FREE);
@@ -1720,22 +1765,14 @@ struct StateOvertakingGo : sc::state< StateOvertakingGo, StateOvertaking >
 
   sc::result react( const EvTimerTrajectoryFree &ev ){
 
+
+    if( context< StateMachine >().getBackedUpOvertakeCount() >2){
+      context< StateMachine >().setBackedUpOvertakeCount(0);
+      return transit<StateOvertakingSmallForward>();
+    }
+
     ObstaclePtrList probstacles;
-    Environment::getInstance()->getObstacleInTrajectory(probstacles);
-
     bool clear = true;
-    if(probstacles.size() > 0){
-      for (ObstaclePtrList::iterator it = probstacles.begin();it != probstacles.end(); it++) {
-        if(Environment::getInstance()->getCar()->calcDistTo((*it)) < 1.75){
-          clear = false;
-          break;
-        }
-      }
-    }
-
-    if(clear){
-      return transit<StateDriving>();
-    }
 
     PatchPtr nextPatch;
     if(Environment::getInstance()->getPastCarPatches()->size() > 0 ) {
@@ -1753,14 +1790,34 @@ struct StateOvertakingGo : sc::state< StateOvertakingGo, StateOvertaking >
     }
 
     if (nextPatch) {
+      double dist = 0.0;
+
       nextPatch->setSwitchType(1);
+      PatchPtr prevPatch = nextPatch;
+      PatchPtr child = nextPatch->getChild(Environment::getInstance()->getCar()->getPose().getYaw(), DD_STRAIGHT);
+      while (dist < 0.9  && child ){
+
+        dist = Environment::getInstance()->getCar()->calcDistTo(child);
+        if(dist < 1.1){
+
+          prevPatch->setSwitchType(0);
+          nextPatch->setSwitchType(1);
+          prevPatch = nextPatch;
+          nextPatch = child;
+          child = nextPatch->getChild(Environment::getInstance()->getCar()->getPose().getYaw(), DD_STRAIGHT);
+
+        }
+        else{
+          break;
+        }
+
+      }
     }
 
     context< StateMachine >().getTrajectoryFactory()->requestUpdate();
 
     //Problem obstacles
 
-    probstacles.clear();
     Environment::getInstance()->getObstacleInTrajectory(probstacles);
 
     clear = true;
@@ -1787,8 +1844,10 @@ struct StateOvertakingGo : sc::state< StateOvertakingGo, StateOvertaking >
       LOGGING_INFO( mcLogger, "[SM][takeover] stop counter: "  << stopCounter << endl);
 
       if(stopCounter > 10){
-        LOGGING_INFO( mcLogger, "[SM][takeover] Start backing up"<< endl);
-        return transit<StateOvertakingReverse>();
+        LOGGING_INFO( mcLogger, "[SM][takeover] Going through Construction site"<< endl);
+        return transit<StateOvertakingThroughConstruction>();
+        //LOGGING_INFO( mcLogger, "[SM][takeover] Start backing up"<< endl);
+        //return transit<StateOvertakingReverse>();
       }
 
       return discard_event();
@@ -1797,7 +1856,7 @@ struct StateOvertakingGo : sc::state< StateOvertakingGo, StateOvertaking >
     double dist = Environment::getInstance()->getCar()->calcDistTo(context< StateOvertaking >().eventRegionArea);
     LOGGING_INFO( mcLogger, "[SM][takeover] Distance to Obstacle : "  << dist << endl);
 
-    if(dist < 0.95){
+    if(dist < 1.25){
       if(nextPatch)
         nextPatch->setSwitchType(0);
       context< StateMachine >().getTrajectoryFactory()->clearOldTraj();
@@ -1848,6 +1907,8 @@ struct StateOvertakingBack : sc::state< StateOvertakingBack, StateOvertaking > {
     mTimerIDChecking = context< StateMachine >().getController()->getTimer()->setTimer(
         250, TIMER_TYPE_CHECK_TRAJECTORY_FREE);
     clearCounter = 0;
+
+    context< StateMachine >().setBackedUpOvertakeCount(0);
 
     context< StateMachine >().getDriverModule()->drive();
   }
@@ -2011,7 +2072,7 @@ struct StateOvertakingReverse : sc::state< StateOvertakingReverse, StateOvertaki
   StateOvertakingReverse( my_context ctx ) : my_base( ctx ) { // entry
     LOGGING_INFO( mcLogger, "[SM] StateOvertakingReverse entered" << endl);
 
-    double shouldFit = 1.25;
+    double shouldFit = 1.30;
 
     double dist = Environment::getInstance()->getCar()->calcDistTo(
         context< StateMachine >().getCurrentOvertakingPosition() );
@@ -2024,6 +2085,9 @@ struct StateOvertakingReverse : sc::state< StateOvertakingReverse, StateOvertaki
 
     LOGGING_INFO( mcLogger, "[SM] DistanceToObst: "  <<  dist  << endl);
     LOGGING_INFO( mcLogger, "[SM] ToDo backup Distance: "  <<  backupDist  << endl);
+
+
+    context< StateMachine >().setBackedUpOvertakeCount( context< StateMachine >().getBackedUpOvertakeCount()+1 );
 
     Environment::getInstance()->setStorePosesBeforePatch(false);
 
@@ -2066,6 +2130,81 @@ struct StateOvertakingReverse : sc::state< StateOvertakingReverse, StateOvertaki
 
 };
 
+
+struct StateOvertakingSmallForward : sc::state< StateOvertakingSmallForward, StateOvertaking > {
+
+
+    StateOvertakingSmallForward( my_context ctx ) : my_base( ctx ) { // entry
+    LOGGING_INFO( mcLogger, "[SM] StateOvertakingSmallForward entered" << endl);
+
+    Environment::getInstance()->setNewAccMinSpeed(0.15);
+    Environment::getInstance()->setOverwriteAccMinSpeed(true);
+    context< StateMachine >().getTrajectoryFactory()
+            ->setFixedTrajectory( TRAJ_FORWARD_SMALL );
+    context< StateMachine >().getDriverModule()->setTargetSpeed(
+            context< StateMachine >().getSpeeds()->SPEED_NORMAL );	// in m/s
+    context< StateMachine >().getDriverModule()->drive();
+
+  }
+
+  ~StateOvertakingSmallForward() {
+    LOGGING_INFO( mcLogger, "[SM] StateOvertakingSmallForward exited" << endl);
+
+    Environment::getInstance()->setOverwriteAccMinSpeed(false);
+    ExtendedPose2d carPose = Environment::getInstance()->getCarPose();
+    double dx = 1.0;		// 1 meter in front of me
+    double dy = 0.23;		// 0.23 meters next me
+    ExtendedPose2d votePose(
+            carPose.getX() + dx*cos( carPose.getYaw() ) - dy*sin( carPose.getYaw() ),
+            carPose.getY() + dx*sin( carPose.getYaw() ) + dy*cos( carPose.getYaw() ),
+            carPose.getYaw() );
+
+    Environment::reset();
+    context< StateMachine >().getStreetPatcher()->reset();
+    context< StateMachine >().getTrajectoryFactory()->clearOldTraj();
+
+    context< StateMachine >().getStreetPatcher()->setAPrioriVote( votePose );
+
+  }
+
+  typedef mpl::list <
+          sc::transition< EvTrajectoryEndReached, StateDriving >
+  > reactions;
+
+
+};
+
+
+struct StateOvertakingThroughConstruction : sc::state< StateOvertakingThroughConstruction, StateOvertaking > {
+
+
+    StateOvertakingThroughConstruction( my_context ctx ) : my_base( ctx ) { // entry
+      LOGGING_INFO( mcLogger, "[SM] StateOvertakingThroughConstruction entered" << endl);
+
+      Environment::getInstance()->setNewAccMinSpeed(0.15);
+      Environment::getInstance()->setOverwriteAccMinSpeed(true);
+      context< StateMachine >().getTrajectoryFactory()
+              ->setFixedTrajectory( TRAJ_MIDDLE ); 
+      context< StateMachine >().getDriverModule()->setTargetSpeed(
+              context< StateMachine >().getSpeeds()->SPEED_NORMAL );	// in m/s
+      context< StateMachine >().getDriverModule()->drive();
+
+    }
+
+    ~StateOvertakingThroughConstruction() {
+      LOGGING_INFO( mcLogger, "[SM] StateOvertakingThroughConstruction exited" << endl);
+
+      Environment::getInstance()->setOverwriteAccMinSpeed(false);
+
+    }
+
+    typedef mpl::list <
+            sc::transition< EvTrajectoryEndReached, StateDriving >
+    > reactions;
+
+
+        };
+
 /*! State for Kuer U-Turn. Drives fixed trajectory, then goes back to driving state. */
 struct StateUTurn : sc::state< StateUTurn, StateWorking >
 {
@@ -2096,6 +2235,86 @@ struct StateUTurn : sc::state< StateUTurn, StateWorking >
     sc::transition< EvTrajectoryEndReached, StateDriving >
     > reactions;
 };
+
+
+struct StatePedestrianCrossing : sc::state< StatePedestrianCrossing, StateFollowTrajectory >
+{
+  unsigned long mTimerIDHalting;
+  int numberOfChecks;
+
+  StatePedestrianCrossing( my_context ctx ) : my_base( ctx ) { // entry
+    LOGGING_INFO( mcLogger, "[SM] StatePedestrianCrossing entered" << endl);
+
+    mTimerIDHalting = 0;  // 0 is an invalid id
+
+    numberOfChecks = 0;
+
+    context< StateMachine >().getDriverModule()->halt();
+
+    // TODO: enable US
+
+    // wait almost nothing....
+    mTimerIDHalting = context< StateMachine >().getController()->getTimer()->setTimer(
+        10, TIMER_TYPE_HALTING_AT_CROSSING );
+
+    // Set the US sensors to the current state. This disables some sensors and sets
+    // maximum viewing distance for others:
+    if( ! context< StateMachine >().isUSDisabled() )
+    {
+      Environment::getInstance()->setCurrentUSSensorLimits( LIMIT_FOR_PED_CROSSING );
+    }
+  }
+  ~StatePedestrianCrossing() {
+    LOGGING_INFO( mcLogger, "[SM] StatePedestrianCrossing exited" << endl);
+    context< StateMachine >().getDriverModule()->setTargetSpeed(
+        context< StateMachine >().getSpeeds()->SPEED_NORMAL);
+    context< StateMachine >().getDriverModule()->drive();	// go to the car.
+
+    // Clean up timers:
+    context< StateMachine >().getController()->getTimer()->removeTimer( mTimerIDHalting );
+  } // exit
+  typedef mpl::list <
+    sc::custom_reaction< EvTimerHaltingAtCrossing >
+    > reactions;
+
+  sc::result react( const EvTimerHaltingAtCrossing &ev ){
+
+    LOGGING_INFO( mcLogger, "Crosswalk checking: " << numberOfChecks << "/12 times." << endl);
+    if( numberOfChecks > 12 )   // This seems like a nice number.
+    {
+      LOGGING_INFO( mcLogger, "... Enough checks, leaving!" << endl);
+      return transit< StateDriving >();
+    }
+
+
+    // Place an event region infront of the car.
+    ExtendedPose2d carPose = Environment::getInstance()->getCarPose();
+    double dx = ( 0.5 + CAR_ORIGIN_TO_FRONT );
+    double dy = PATCH_WIDTHS[STRAIGHT]*0.225;		// 0.25 meters next me
+    ExtendedPose2d pose(
+        carPose.getX() + dx*cos( carPose.getYaw() ) - dy*sin( carPose.getYaw() ),
+        carPose.getY() + dx*sin( carPose.getYaw() ) + dy*cos( carPose.getYaw() ),
+        carPose.getYaw() );
+
+    EventRegionPtr region( new EventRegion( PED_CROSSING_FREE_REGION, pose, 0.4*2+1.0, 0.8 ) );
+    region->setX( pose.getX() );
+    region->setY( pose.getY() );
+    region->setYaw( pose.getYaw() );
+    //Environment::getInstance()->addEventRegion( region );
+
+    if( Environment::getInstance()->isObstacleFree( region, true ) )
+    {
+      return transit< StateDriving >();
+    } else {
+      mTimerIDHalting = context< StateMachine >().getController()->getTimer()->setTimer(
+          1000, TIMER_TYPE_HALTING_AT_CROSSING );
+
+      numberOfChecks ++;
+      return discard_event();
+    }
+  }
+};
+
 
 }	// namespace
 }	// namespace

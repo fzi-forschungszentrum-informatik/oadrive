@@ -285,26 +285,26 @@ void Environment::generateEventRegionsForPatch( PatchPtr streetPatch )
 
     EventRegionPtr evRegObst1(
         new EventRegion( CROSS_SECTION_OBSTACLES,
-          ExtendedPose2d(-PATCH_LENGTHS[CROSS_SECTION]*0.5-0.25,-STREET_SIDE_TO_MID_LANE+0.16,M_PI),
-          streetPatch->getWidth()/2, streetPatch->getHeight()+0.5));
+          ExtendedPose2d(-PATCH_LENGTHS[CROSS_SECTION]*0.5-0.5,-STREET_SIDE_TO_MID_LANE+0.16,M_PI),
+          streetPatch->getWidth()/2, streetPatch->getHeight()+1.0));
     streetPatch->addEventRegion(evRegObst1);
     addEventRegion( evRegObst1 );
     EventRegionPtr evRegObst2(
         new EventRegion( CROSS_SECTION_OBSTACLES,
-          ExtendedPose2d(-STREET_SIDE_TO_MID_LANE+0.16,PATCH_LENGTHS[CROSS_SECTION]*0.5+0.25,M_PI/2),
-          streetPatch->getWidth()/2, streetPatch->getHeight()+0.5));
+          ExtendedPose2d(-STREET_SIDE_TO_MID_LANE+0.16,PATCH_LENGTHS[CROSS_SECTION]*0.5+0.5,M_PI/2),
+          streetPatch->getWidth()/2, streetPatch->getHeight()+1.0));
     streetPatch->addEventRegion(evRegObst2);
     addEventRegion( evRegObst2 );
     EventRegionPtr evRegObst3(
         new EventRegion( CROSS_SECTION_OBSTACLES,
-          ExtendedPose2d(STREET_SIDE_TO_MID_LANE-0.16,-PATCH_LENGTHS[CROSS_SECTION]*0.5-0.25,3*M_PI/2),
-          streetPatch->getWidth()/2, streetPatch->getHeight()+0.5));
+          ExtendedPose2d(STREET_SIDE_TO_MID_LANE-0.16,-PATCH_LENGTHS[CROSS_SECTION]*0.5-0.5,3*M_PI/2),
+          streetPatch->getWidth()/2, streetPatch->getHeight()+1.0));
     streetPatch->addEventRegion(evRegObst3);
     addEventRegion( evRegObst3 );
     EventRegionPtr evRegObst4(
         new EventRegion( CROSS_SECTION_OBSTACLES,
-          ExtendedPose2d(PATCH_LENGTHS[CROSS_SECTION]*0.5+0.25,STREET_SIDE_TO_MID_LANE-0.16,0),
-          streetPatch->getWidth()/2, streetPatch->getHeight()+0.5));
+          ExtendedPose2d(PATCH_LENGTHS[CROSS_SECTION]*0.5+0.5,STREET_SIDE_TO_MID_LANE-0.16,0),
+          streetPatch->getWidth()/2, streetPatch->getHeight()+1.0));
     streetPatch->addEventRegion(evRegObst4);
     addEventRegion( evRegObst4 );
     EventRegionPtr evRegObstCenter(
@@ -334,7 +334,7 @@ void Environment::generateEventRegionsForPatch( PatchPtr streetPatch )
       }
 
       // pose is in coordinate system of the patch
-      double offsetX = 0.37;
+      double offsetX = 0.35;
       pose = ExtendedPose2d( sign * (PATCH_LENGTHS[PARKING] / 2 + PATCH_WIDTHS[PARKING] / 2), -offsetX / 2., M_PI_2 );
       evRegParallel = EventRegionPtr(
                         new EventRegion( PARKING_CROSS, pose, streetPatch->getWidth(),
@@ -797,6 +797,8 @@ void Environment::clearAllPatches(){
 
 void Environment::clearObstacles( SensorType type ){
 
+
+  LOGGING_INFO(worldLogger, " clear Obstacles starting ... " <<endl);
   ObstaclePtrList::iterator it;
   for( it = mObstacles.begin(); it != mObstacles.end(); )
   {
@@ -815,7 +817,7 @@ void Environment::clearObstacles( SensorType type ){
             itEventRegion != (*it)->getEventRegions()->end();
             itEventRegion++ )
         {
-          mEventRegions.remove(*itEventRegion);
+          removeEventRegion(*itEventRegion);
         }
       }
       it = mObstacles.erase( it );
@@ -823,6 +825,7 @@ void Environment::clearObstacles( SensorType type ){
       it ++;
     }
   }
+  LOGGING_INFO(worldLogger, " Cleared Obstacles. " <<endl);
 }
 
 void Environment::setTrajectory( const MultiTrajectory& traj )
@@ -1238,6 +1241,22 @@ void Environment::addTrafficSign(TrafficSignPtr sign){
 
     connectPatchesAndTrafficSigns();
 
+    // We found a pedestrians crossing traffic sign.
+    if( nearest->getSignType() == MARKER_ID_PEDESTRIANCROSSING )
+    {
+      if( ! nearest->getEventRegion() )
+      {
+        // Generate a event region, halt when we enter it.
+        EventRegionPtr evRegHalt( new EventRegion( PED_CROSSING_HALT,
+              ExtendedPose2d( 0.5 * (0.35 + 1 + CAR_ORIGIN_TO_FRONT), 0.5 + 0.135, 0 ), // approx pos of sign from patch
+              2.0, // width
+              0.35 + 1 + CAR_ORIGIN_TO_FRONT )); // height
+        evRegHalt->setObjectOfInterest( nearest );
+        addEventRegion( evRegHalt );
+        nearest->addEventRegion( evRegHalt );
+      }
+    }
+
     // If the sign could not be connected and it is a sign for a crossing, then (more
     // specifically a 'haveway' sign), add an event region. This means we couldn't find a
     // CROSS_SECTION, but we've found a corresponding traffic sign.
@@ -1510,7 +1529,7 @@ bool Environment::isRelevantObstacle(ObstaclePtr obstacle, Trajectory2d& traj, d
     nextPoint.setX(extendedTraj.back().getX() + cos( yaw ) * 1.0 );
     nextPoint.setY(extendedTraj.back().getY() + sin ( yaw ) * 1.0 );
     nextPoint.setYaw(yaw);
-    extendedTraj.push_back(nextPoint);
+    //extendedTraj.push_back(nextPoint);
 
     //LOGGING_INFO( worldLogger, "Locked @ isRelevantObstacle " << endl );
 //    if(obstacle->getProbability() < EXISTENCE_THRES)
@@ -2397,6 +2416,18 @@ void Environment::initUSSensorLimits()
   limits.rearCenter = Config::getDouble( "USSensors", "LIMIT_FOR_DRIVING_REARCENTER", -1.0);
   limits.rearRight = Config::getDouble( "USSensors", "LIMIT_FOR_DRIVING_REARRIGHT", -1.0);
   mUSSensorLimits.insert( std::pair<enumUSSensorLimits, usSensor>( LIMIT_FOR_DRIVING, limits ));
+
+  limits.frontLeft = Config::getDouble( "USSensors", "LIMIT_FOR_PED_CROSSING_FRONTLEFT", 1.0);
+  limits.frontCenterLeft = Config::getDouble( "USSensors", "LIMIT_FOR_PED_CROSSING_FRONTCENTERLEFT", 1.0);
+  limits.frontCenter = Config::getDouble( "USSensors", "LIMIT_FOR_PED_CROSSING_FRONTCENTER", 1.0);
+  limits.frontCenterRight = Config::getDouble( "USSensors", "LIMIT_FOR_PED_CROSSING_FRONTCENTERRIGHT", 1.0);
+  limits.frontRight = Config::getDouble( "USSensors", "LIMIT_FOR_PED_CROSSING_FRONTRIGHT", 1.0);
+  limits.sideLeft = Config::getDouble( "USSensors", "LIMIT_FOR_PED_CROSSING_SIDELEFT", -1.0);
+  limits.sideRight = Config::getDouble( "USSensors", "LIMIT_FOR_PED_CROSSING_SIDERIGHT", -1.0);
+  limits.rearLeft = Config::getDouble( "USSensors", "LIMIT_FOR_PED_CROSSING_REARLEFT", -1.0);
+  limits.rearCenter = Config::getDouble( "USSensors", "LIMIT_FOR_PED_CROSSING_REARCENTER", -1.0);
+  limits.rearRight = Config::getDouble( "USSensors", "LIMIT_FOR_PED_CROSSING_REARRIGHT", -1.0);
+  mUSSensorLimits.insert( std::pair<enumUSSensorLimits, usSensor>( LIMIT_FOR_PED_CROSSING, limits ));
 
   limits.frontLeft = -1.0;
   limits.frontCenterLeft = -1.0;

@@ -95,14 +95,7 @@ void TrafficSignDetAruco::detectMarkers(cv::Mat& input, bool histogramEqualizati
     cv::Mat equalizedImage(input.size(), input.type());
     cv::Mat* image;
 
-    if(histogramEqualization) {
-      // histogram equalization
-      cv::equalizeHist(input, equalizedImage);
-      image = &equalizedImage;
-    }
-    else {
-      image = &input;
-    }
+    image = &input;
 
     // detect the marker
     markerDetector.detect(*image, detectedMarkers, cameraMatrix, distortionCoefficients, MARKER_SIZE);
@@ -138,7 +131,50 @@ void TrafficSignDetAruco::detectMarkers(cv::Mat& input, bool histogramEqualizati
         //std::cout << "yaw: " << trafficSignYaw << std::endl;
         oadrive::core::ExtendedPose2d positionMarkerCar(detectedMarkers[i].Tvec.at<float>(0) + CAMERA2CAR_X, detectedMarkers[i].Tvec.at<float>(2) + CAMERA2CAR_Y, trafficSignYaw);
         oadrive::core::ExtendedPose2d positionWorld( birdViewPositionConverter->car2World(positionCar, positionMarkerCar) );
+        LOGGING_INFO(TrafficSignLogger, "traffic sign detected: " << detectedMarkers[i].id << ", x: " << detectedMarkers[i].Tvec.at<float>(0) + CAMERA2CAR_X << ", y: " << detectedMarkers[i].Tvec.at<float>(2) + CAMERA2CAR_Y << ", yaw: " << trafficSignYaw << endl);
+        Environment::getInstance()->addTrafficSign(positionWorld, detectedMarkers[i].id);
+      }
+    }
 
+
+      // histogram equalization
+      cv::equalizeHist(input, equalizedImage);
+      image = &equalizedImage;
+    // detect the marker
+    markerDetector.detect(*image, detectedMarkers, cameraMatrix, distortionCoefficients, MARKER_SIZE);
+
+    if(detectedMarkers.size() > 0) {
+      // save current car pose
+      oadrive::core::ExtendedPose2d positionCar( Environment::getInstance()->getCarPose() );
+
+      // calculate position of markers in camera coordinate system and add every marker to environment
+      for(size_t i = 0; i < detectedMarkers.size(); ++i) {
+        // map traffic sign into range [0, 2*Pi)
+        cv::Mat R;
+        cv::Rodrigues(detectedMarkers[i].Rvec, R); // R is 3x3
+        double r32 = R.at<float>(2,1);
+        double r33 = R.at<float>(2,2);
+        double trafficSignYaw = std::atan2(r32,r33);
+
+        trafficSignYaw *= -1;
+
+        int factor = trafficSignYaw / (2 * M_PI);
+        trafficSignYaw -= factor * 2 * M_PI;
+        if(trafficSignYaw < 0) {
+          trafficSignYaw += 2 * M_PI;
+        }
+
+        // angle must be in range (Pi/2 to 3*Pi/2) - otherwise the car can't see the sign
+        /*if(trafficSignYaw < M_PI_2) {
+                                        trafficSignYaw += M_PI;
+                                }
+                                else if(trafficSignYaw > M_PI + M_PI_2) {
+                                        trafficSignYaw -= M_PI;
+                                }*/
+        //std::cout << "yaw: " << trafficSignYaw << std::endl;
+        oadrive::core::ExtendedPose2d positionMarkerCar(detectedMarkers[i].Tvec.at<float>(0) + CAMERA2CAR_X, detectedMarkers[i].Tvec.at<float>(2) + CAMERA2CAR_Y, trafficSignYaw);
+        oadrive::core::ExtendedPose2d positionWorld( birdViewPositionConverter->car2World(positionCar, positionMarkerCar) );
+        LOGGING_INFO(TrafficSignLogger, "traffic sign detected: " << detectedMarkers[i].id << ", x: " << detectedMarkers[i].Tvec.at<float>(0) + CAMERA2CAR_X << ", y: " << detectedMarkers[i].Tvec.at<float>(2) + CAMERA2CAR_Y << ", yaw: " << trafficSignYaw << endl);
         Environment::getInstance()->addTrafficSign(positionWorld, detectedMarkers[i].id);
       }
     }

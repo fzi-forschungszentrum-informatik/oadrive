@@ -1,0 +1,3 @@
+%YAML:1.0
+#IP adress of the server where redis is running
+ServerIP: "141.21.47.130"

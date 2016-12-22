@@ -97,6 +97,9 @@ void TrajectoryFactory::setFixedTrajectory( enumTrajectory trajName, double scal
     case TRAJ_U_TURN:
       mTrajectoryName = "turn_slow";
       break;
+    case TRAJ_MIDDLE:
+      mTrajectoryName = "middle";
+      break;
     default:
       mTrajectoryName = "";
       break;
@@ -166,7 +169,7 @@ bool TrajectoryFactory::generateFromPatches(bool useOld)
 
   PatchPtrList* street = Environment::getInstance()->getStreet();
 
-  LOGGING_INFO( worldLogger, "[TF] Patches in street: " << street->size() << endl );
+//  LOGGING_INFO( worldLogger, "[TF] Patches in street: " << street->size() << endl );
 
   if( street->size() > 0 )
   {
@@ -184,12 +187,12 @@ bool TrajectoryFactory::generateFromPatches(bool useOld)
 
     int lastUsedPastPose = pastCarPoses.size() - 1;
 
-    LOGGING_INFO( worldLogger, "[TF] Number of pastCarPatches: " << pastCarPatches->size() << endl );
-    LOGGING_INFO( worldLogger, "[TF] Iterator: " << iterator->getId() << " " << iterator->getPose() << endl );
+//    LOGGING_INFO( worldLogger, "[TF] Number of pastCarPatches: " << pastCarPatches->size() << endl );
+//    LOGGING_INFO( worldLogger, "[TF] Iterator: " << iterator->getId() << " " << iterator->getPose() << endl );
 
     if(Environment::getInstance()->isCarHasBackedUp()){
 
-      LOGGING_INFO( worldLogger, "[TF] Backed up." << endl );
+//      LOGGING_INFO( worldLogger, "[TF] Backed up." << endl );
       //case reverted
       if(pastCarPatches->size() > 0 && pastCarPatches->back())
         iterator = pastCarPatches->back();
@@ -207,7 +210,7 @@ bool TrajectoryFactory::generateFromPatches(bool useOld)
     else if(pastCarPatches->size() >= 3)
     {
 
-      LOGGING_INFO( worldLogger, "[TF] PastCarPatches >= 3" << endl );
+//      LOGGING_INFO( worldLogger, "[TF] PastCarPatches >= 3" << endl );
 
       PatchPtrList::iterator it = pastCarPatches->begin();
       std::advance(it, pastCarPatches->size()-3);
@@ -217,7 +220,7 @@ bool TrajectoryFactory::generateFromPatches(bool useOld)
       lastPose = pastCarPoses[poseIndexBeforeLastPatch];
       lastPatchCenterPose = (iterator)->getPose();
 
-      LOGGING_INFO( worldLogger, "[TF] Iterator: " << iterator->getId() << " " << iterator->getPose() << endl );
+//      LOGGING_INFO( worldLogger, "[TF] Iterator: " << iterator->getId() << " " << iterator->getPose() << endl );
       //LOGGING_INFO( worldLogger, "Looking for child for " << iterator->getId() << endl );
       //LOGGING_INFO( worldLogger, " yaw: " << lastPose.getYaw() << endl );
       PatchPtr next = iterator->getNextChild( lastPose.getYaw() );
@@ -226,9 +229,9 @@ bool TrajectoryFactory::generateFromPatches(bool useOld)
       if( next )
         iterator = next;
       else
-        LOGGING_WARNING( worldLogger, "No child patch found!" << endl );
+//        LOGGING_WARNING( worldLogger, "No child patch found!" << endl );
 
-      LOGGING_INFO( worldLogger, "[TF] Next: " << next->getId() << " " << next->getPose() << endl );
+     // LOGGING_INFO( worldLogger, "[TF] Next: " << next->getId() << " " << next->getPose() << endl );
 
       lastUsedPastPose = Environment::getInstance()->getCarPoseIndexBeforePatch( iterator->getId() );
       lastUsedPastPose = -1;
@@ -238,7 +241,7 @@ bool TrajectoryFactory::generateFromPatches(bool useOld)
     }
     else if(pastCarPatches->size() == 1 && pastCarPatches->size() == 2){
 
-      LOGGING_INFO( worldLogger, "[TF] PastCarPatches 1,2" << endl );
+//      LOGGING_INFO( worldLogger, "[TF] PastCarPatches 1,2" << endl );
 
       iterator = *(street->begin());
       PatchPtr next;
@@ -264,7 +267,7 @@ bool TrajectoryFactory::generateFromPatches(bool useOld)
     }
     else{
 
-      LOGGING_INFO( worldLogger, "[TF] PastCarPatches 0" << endl );
+//      LOGGING_INFO( worldLogger, "[TF] PastCarPatches 0" << endl );
       lastPose = pastCarPoses.back();
       iterator = *(street->begin());
       lastPatchCenterPose = iterator->getPose();
@@ -320,7 +323,7 @@ bool TrajectoryFactory::generateFromPatches(bool useOld)
     }
     if( lastPastPatch )
     {
-      LOGGING_INFO( worldLogger, "lastPastPatch: " << lastPastPatch->getId() << endl );
+//      LOGGING_INFO( worldLogger, "lastPastPatch: " << lastPastPatch->getId() << endl );
     }
 
     int counter = 0;
@@ -347,11 +350,11 @@ bool TrajectoryFactory::generateFromPatches(bool useOld)
                         }*/
       if(next)
       {
-        LOGGING_INFO( worldLogger, "[TF] Next: " << next->getId() << " " << next->getPose() << endl );
+//        LOGGING_INFO( worldLogger, "[TF] Next: " << next->getId() << " " << next->getPose() << endl );
         if(iterator->isSwitchPatch())
         {
-          LOGGING_INFO( worldLogger, "\t\tPatch is a Switch Patch: " << iterator->getId() << endl );
-          LOGGING_INFO( worldLogger, "\t\tSwitched Lane at Patch: " << next->getId() << endl );
+//          LOGGING_INFO( worldLogger, "\t\tPatch is a Switch Patch: " << iterator->getId() << endl );
+//          LOGGING_INFO( worldLogger, "\t\tSwitched Lane at Patch: " << next->getId() << endl );
           if(iterator->getSwitchType() == 1)
           {
             next->setLane( LANE_LEFT );
@@ -366,8 +369,8 @@ bool TrajectoryFactory::generateFromPatches(bool useOld)
 
       //get the trajectory reference points of the patch and append it to current trajectory:
       Trajectory2d* t = iterator->getTrajectoryFromMC( lastPose, iterator->getLane() );
-      LOGGING_INFO( worldLogger, "[TF]\tSize of traj part: " << t->size() << endl );
-      LOGGING_INFO( worldLogger, "[TF] Iterator patch type: " << iterator->getPatchType() << endl );
+//      LOGGING_INFO( worldLogger, "[TF]\tSize of traj part: " << t->size() << endl );
+//      LOGGING_INFO( worldLogger, "[TF] Iterator patch type: " << iterator->getPatchType() << endl );
 
       if( t->size() == 0 ) break;
 
