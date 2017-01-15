@@ -6,7 +6,9 @@ SET(OADRIVE_IDL_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/src" CACHE INTERNAL "")
 SET(OADRIVE_IDE_FOLDER "oadrive")
 
 # find aruco and redisclient
-FIND_PACKAGE(aruco)
+FIND_PACKAGE(aruco
+  CONFIGS
+  Findaruco.cmake)
 FIND_PACKAGE(redisclient)
 
 ICMAKER_REGISTER_PACKAGE(oadrive)
