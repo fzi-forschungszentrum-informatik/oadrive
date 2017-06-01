@@ -3,6 +3,13 @@ oadrive - The Open Autonomous Driving Package
 
 Made by FZI IDS/TKS. http://www.fzi.de
 
+This package provides basic autonomous driving functionalities
+with only little dependencies to quite common open source libraries. It is mainly used by student teams participating in the Audi Autonomous Driving Cup, e.g. Team KACADU 2016 (https://github.com/fzi-forschungszentrum-informatik/aadc2016) and Team KATANA 2015 (https://github.com/KAtana-Karlsruhe/AADC_2015_KAtana).
+
+Besides this main package a lot of additional material as well as publications describing the code and supplementary simulation frameworks can be found on the official website:
+
+**Please visit [Audi Autonomous Driving Cup at www.fzi.de](http://url.fzi.de/aadc)**
+
 Please consider the license information provided with this repository.
 You should have received a copy (LICENSE.txt).
 
