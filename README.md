@@ -10,6 +10,8 @@ Besides this main package a lot of additional material as well as publications d
 
 **Please visit [Audi Autonomous Driving Cup at www.fzi.de](http://url.fzi.de/aadc)**
 
+**We are currently preparing a docker image with an example recording for an easy start. This will be released soon!**
+
 Please consider the license information provided with this repository.
 You should have received a copy (LICENSE.txt).
 
