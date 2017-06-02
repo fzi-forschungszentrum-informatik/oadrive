@@ -14,13 +14,14 @@ Please consider the license information provided with this repository.
 You should have received a copy (LICENSE.txt).
 
 
-Core funtionality:
+Core funtionality
 -----------------------------------------------------------
 The package is used to control electrical model cars in the
 AADC (Audi Autonomous Driving Cup). It attempts to abide to
 the rules defined for the Cup.
 
-Dependencies:
+
+Dependencies
 ------------------------------------------------------------
 - OpenCV:
     - At least Version 3.0 recommended. 2.4.11 is supported,
@@ -31,7 +32,8 @@ Dependencies:
 - icMaker (https://github.com/fzi-forschungszentrum-informatik/icmaker)
 - icl_core (https://github.com/fzi-forschungszentrum-informatik/icl_core)
 
-Installation:
+
+Installation
 -------------------------------------------------------------
 Build and install OpenCV, Aruco, redisclient. Use icmaker to create
 a workspace including icl_core and oadrive. See 
@@ -39,7 +41,7 @@ https://github.com/fzi-forschungszentrum-informatik/icmaker for
 more information.
 
 
-Usage:
+Usage
 ------------------------------------------------------------
 The package can be built independently of the ADTF development
 environment (which is required by the AADC). The 
@@ -54,7 +56,8 @@ If Interface::startDebugDumping() is called at startup, the
 Interface will write out debug data which can then be used for
 offline configuration.
 
-Calibration:
+
+Calibration
 -------------------------------------------------------------
 Proper usage of the package requires calibration of the camera.
 This camera calibration calculates a Bird-View perspective
