@@ -14,7 +14,7 @@ Besides this main package a lot of additional material as well as publications d
 
 **Please visit [Audi Autonomous Driving Cup at www.fzi.de](http://url.fzi.de/aadc)**
 
-**A docker image for quick start is available now! Please follow the instructions at https://cloud.docker.com/app/fziispetks/repository/docker/fziispetks/oadrive/general**
+**A docker image for quick start is available now! Please follow the instructions at https://hub.docker.com/r/fziispetks/oadrive/**
 
 Core funtionality
 -----------------------------------------------------------
