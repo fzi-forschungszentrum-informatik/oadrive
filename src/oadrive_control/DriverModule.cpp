@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -218,22 +218,19 @@ void DriverModule::update( const ExtendedPose2d &carPose )
   mtx.unlock();
 }
 
-float DriverModule::getSteeringAngle()
+float DriverModule::getSteeringAngle() const
 {
-  float tmp;
-  mtx.lock();
-  tmp = mCurrentSteering;
-  mtx.unlock();
-  return tmp;
+  boost::lock_guard<boost::mutex> lock(mtx);
+  return mCurrentSteering;
 }
 
-float DriverModule::getSpeed()
+float DriverModule::getSpeed() const
 {
   float tmp;
   if(mtx.try_lock() == false)
   {
     LOGGING_ERROR( controlLogger, "Locking failed @ DriverModule::getSpeed " << endl );
-    return 0;
+    return 0.0;
   }
   LOGGING_INFO( controlLogger, "[DriverModule] New target speed: " << mCurrentSpeed << endl );
   tmp = mCurrentSpeed;

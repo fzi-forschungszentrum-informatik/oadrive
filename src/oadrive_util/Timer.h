@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -27,6 +27,7 @@
 
 #include "TimerTypes.h"
 #include "TimerEventListener.h"
+#include <boost/shared_ptr.hpp>
 
 namespace oadrive {
 namespace util {
@@ -37,9 +38,18 @@ struct structTimers{
   timerType type;
   bool markedForDeletion;
 };
+class TimerEventListener;
+typedef boost::shared_ptr<TimerEventListener> TimerEventListenerPtr;
+typedef boost::shared_ptr<const TimerEventListener> ConstTimerEventListenerPtrPtr;
+typedef std::list<TimerEventListenerPtr> TimerEventListenerPtrList;
+
 class Timer
 {
 public:
+  typedef boost::shared_ptr<Timer> Ptr;
+  typedef boost::shared_ptr<const Timer> ConstPtr;
+
+
   Timer();
   //!
   //! \brief setTimeIncrement Increments the internal counter
@@ -61,8 +71,8 @@ public:
   /*! Sets the timer given by timerID to be deleted.*/
   void removeTimer( unsigned long timerID );
 
-  void addListener( TimerEventListener* listener );
-  void removeListener( TimerEventListener* listener );
+  void addListener( TimerEventListenerPtr listener );
+  void removeListener( TimerEventListenerPtr listener );
 
   void clearAllTimers();
 
@@ -76,7 +86,7 @@ private:
   //!\brief checks all timers if a call is needed
   void checkTimers();
 
-  std::list<TimerEventListener*> mListeners;
+  TimerEventListenerPtrList mListeners;
 };
 }
 }

@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -26,6 +26,7 @@
 #define OADRIVE_INTERFACE_INTERFACE_H
 //activate this if you can't use imgwrite/read with PNG
 //#define noPng
+#include <boost/shared_ptr.hpp>
 #include <boost/thread/mutex.hpp>
 #include <oadrive_util/BirdViewConverter.h>
 #include <oadrive_util/CoordinateConverter.h>
@@ -37,7 +38,12 @@
 #include <oadrive_missioncontrol/IControl4MC.h>		// Event receiver for MissionControl
 #include <oadrive_control/DriverModule.h>
 #include <oadrive_util/Timer.h>
+
+#ifdef _IC_BUILDER_OADRIVE_TRAFFICSIGN_
 #include <oadrive_trafficsign/TrafficSignDetAruco.h>
+#endif
+
+
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -54,21 +60,35 @@ struct JuryCommand
   int maneuverEntryID;
 };
 
+//class Interface;
+//typedef boost::shared_ptr<Interface> InterfacePtr;
+
 /*! Interface between oadrive logic and car.
          * Can be used as an interface to a simulation, or ADTF Filters.
          * Abstracts away all other modules, such as lane-detection and decision-making.
          * Minimum input is an OpenCV camera image and a car pose. */
 class Interface : public oadrive::missioncontrol::IControl4MC,
-  public oadrive::util::TimerEventListener
+  public oadrive::util::TimerEventListener,
+  public boost::enable_shared_from_this<Interface>
 {
 public:
+
+  typedef boost::shared_ptr<Interface> Ptr;
+  typedef boost::shared_ptr<const Interface> ConstPtr;
+
+
   /*! Constructor
    * Needs to be given a file name to where the config file is.
    * \param iControl4MC (Optional) Event handler which will be called when
    * 		the mission control has new events (like communication with the jury).
    * 		If none is given, then the Interface class is responsible for handling
    * 		events by itself. */
-  Interface( std::string configFolder, std::string carName, IControl4MC* iControl4MC = NULL );
+  Interface( std::string configFolder, std::string carName, IControl4MC::Ptr iControl4MC = IControl4MC::Ptr());
+  /*! Initialization
+   *  Has to be run right after construction. A shared_ptr has to exist already.
+   */
+  void init();
+
   virtual ~Interface();
 
   /*! Pass the camera image to the class.
@@ -100,10 +120,10 @@ public:
    * Angle larger than 0 is "left", angle lower than zero means "right"
    * (TODO: CHECK THIS!)
    * angle range: -PI/6 . +PI/6. */
-  float getSteering();
+  float getSteering() const   { return mDriver.getSteeringAngle(); }
 
   /*! Returns speed in meters per second. */
-  float getSpeed();
+  float getSpeed() const;
 
   /*! Lets the Interface know which action the jury wants us to perform.
    * \param action: (Quoting AADC Manual):
@@ -153,7 +173,7 @@ public:
     return &mTrajectoryFactory;
   }
 
-  oadrive::util::Timer* getTimer() {return &mTimer;}
+  oadrive::util::Timer::Ptr getTimer() {return mTimer;}
 
   /*! Toggle lights.
    * Implements IControl4MC.*/
@@ -184,6 +204,9 @@ private:
 
   void dumpDebugData( const ExtendedPose2d &pose, cv::Mat image );
 
+  /*! */
+  void updateBrakingLights(float speed);
+
   std::string mConfigPath;
   std::string mCarName;
   std::string mBirdViewCalFile;
@@ -196,7 +219,7 @@ private:
 
   oadrive::util::BirdViewConverter mBirdViewConverter;
 
-  oadrive::util::Timer mTimer;
+  oadrive::util::Timer::Ptr mTimer;
 
   oadrive::control::DriverModule mDriver;
 
@@ -204,11 +227,13 @@ private:
 
   oadrive::world::TrajectoryFactory mTrajectoryFactory;
 
-  oadrive::missioncontrol::IControl4MC* mIControl4MC;
-  oadrive::missioncontrol::MissionControl mMissionControl;
+  oadrive::missioncontrol::IControl4MC::Ptr mIControl4MC;
+  oadrive::missioncontrol::MissionControl::Ptr mMissionControl;
   oadrive::obstacle::ProcessSensors mProcessSensor;
 
+#ifdef _IC_BUILDER_OADRIVE_TRAFFICSIGN_
   oadrive::trafficsign::TrafficSignDetAruco mTrafficSignDetectorAruco;
+#endif
 
   int mImageCounter;
 

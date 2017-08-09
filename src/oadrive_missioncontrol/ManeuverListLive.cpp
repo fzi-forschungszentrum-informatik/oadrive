@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -38,7 +38,7 @@ namespace oadrive
     static const std::string channelName = "oadrive/manlist";
 
 
-    map<string, enumManeuver> ManeuverListLive::maneuverMap = map_list_of ("left", MANEUVER_LEFT) ("right", MANEUVER_RIGHT) ("straight", MANEUVER_STRAIGHT) ("parallel_parking", MANEUVER_PARKING_PARALLEL) ("cross_parking", MANEUVER_PARKING_CROSS) ("pull_out_left", MANEUVER_PULLOUT_LEFT) ("pull_out_right", MANEUVER_PULLOUT_RIGHT);
+    map<string, enumManeuver> ManeuverListLive::maneuverMap = map_list_of ("finished", MANEUVER_FINISHED) ("left", MANEUVER_LEFT) ("right", MANEUVER_RIGHT) ("straight", MANEUVER_STRAIGHT) ("parallel_parking", MANEUVER_PARKING_PARALLEL) ("cross_parking", MANEUVER_PARKING_CROSS) ("pull_out_left", MANEUVER_PULLOUT_LEFT) ("pull_out_right", MANEUVER_PULLOUT_RIGHT);
 
 
     ManeuverListLive::ManeuverListLive ()
@@ -47,7 +47,7 @@ namespace oadrive
       m_prevMan = MANEUVER_RIGHT;
       m_manID = 0;
       m_isFin = false;
-      mc = 0;
+      mc = IMC2Man::Ptr();
 
       LOGGING_INFO( mcLogger, "ManeuverListLive constructed." << endl );
 

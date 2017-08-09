@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -67,12 +67,12 @@ public:
   //! \brief getSteeringAngle get steering angle it is calculate in udate
   //! \return steering angle in degrees. (0° is straight forward)
   //!
-  float getSteeringAngle();
+  float getSteeringAngle() const;
   //!
   //! \brief getSpeed get driving speed
   //! \return speed
   //!
-  float getSpeed();
+  float getSpeed() const;
   ///!
   //! \brief setTargetSpeed set the maximum speed for the controler
   //! \param speed speed
@@ -135,7 +135,7 @@ private:
   boost::posix_time::ptime mLastImageStamp;
   bool mLowFrameRate;
 
-  boost::mutex mtx;
+  mutable boost::mutex mtx;
 
 public:
   // use a proper alignment when calling the constructor.

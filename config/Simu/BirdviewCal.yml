@@ -34,3 +34,9 @@ MPerPixel: 1.3358778625954201e-03
 PointsHeight: 5
 PointsWidth: 8
 ImgSize: [ 640, 480 ]
+mCameraPosX: 0.18
+mCameraPosY: 0.0
+mCameraPosZ: 0.35
+mCameraPitch: 0.0002
+mCameraRoll: 0.0
+mCameraYaw: 0.0

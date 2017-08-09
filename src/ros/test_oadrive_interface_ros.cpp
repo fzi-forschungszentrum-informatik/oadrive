@@ -14,6 +14,12 @@
 #include <boost/regex.hpp>
 #include <string>
 
+#include <ros/ros.h>
+#include <image_transport/image_transport.h>
+#include <opencv2/highgui/highgui.hpp>
+#include <cv_bridge/cv_bridge.h>
+
+
 using namespace oadrive::core;
 using namespace oadrive::lanedetection;
 using namespace oadrive::util;
@@ -31,12 +37,22 @@ struct usDataWithFrame
   size_t frame;
 };
 
-void showDebugOutput( Interface& interface, cv::Mat image,cv::Mat depthImage, ExtendedPose2d carPose )
+
+// define global ROS publishers
+typedef boost::shared_ptr<image_transport::Publisher> ITPublisherPtr;
+ITPublisherPtr pub_input;
+ITPublisherPtr pub_output;
+ITPublisherPtr pub_hough_space;
+ITPublisherPtr pub_map;
+ITPublisherPtr pub_clean_depth_image;
+
+
+void showDebugOutput( Interface* interface, cv::Mat image,cv::Mat depthImage, ExtendedPose2d carPose )
 {
 
     //generate Debug Images
-  cv::Mat features = interface.generateDebugFeatureImage();
-  cv::Mat houghSpace = interface.getPatcher()->generateHoughSpaceDebugImage();
+  cv::Mat features = interface->generateDebugFeatureImage();
+  cv::Mat houghSpace = interface->getPatcher()->generateHoughSpaceDebugImage();
 
   cv::Mat map =
     Environment::getInstance()->getEnvAsImage( carPose.getX(), carPose.getY(), 3, 100 );
@@ -49,6 +65,26 @@ void showDebugOutput( Interface& interface, cv::Mat image,cv::Mat depthImage, Ex
   if(!depthImage.empty())
   {
     imshow("CleanDepthImage",depthImage);
+  }
+
+  sensor_msgs::ImagePtr msg;
+
+  msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", image).toImageMsg();
+  pub_input->publish(msg);
+
+  msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", features).toImageMsg();
+  pub_output->publish(msg);
+
+  msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", houghSpace).toImageMsg();
+  pub_hough_space->publish(msg);
+
+  msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", map).toImageMsg();
+  pub_map->publish(msg);
+
+  if(!depthImage.empty())
+  {
+    msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", depthImage).toImageMsg();
+    pub_clean_depth_image->publish(msg);
   }
 
 #endif
@@ -178,6 +214,20 @@ int main(int argc, char** argv)
     {
       printf("ESC to quit,a for automatic stepping, r for reset, s for new initial vote and any other key to continue to next image.\n");
 
+      // initialize ROS node
+      ros::init(argc, argv, "test_oadrive_interface_ros");
+      ros::NodeHandle nh;
+
+      // initialize publishers
+      image_transport::ImageTransport it(nh);
+      pub_input.reset(new image_transport::Publisher(it.advertise("image_input", 1)));
+      pub_output.reset(new image_transport::Publisher(it.advertise("image_output", 1)));
+      pub_hough_space.reset(new image_transport::Publisher(it.advertise("image_hough_space", 1)));
+      pub_map.reset(new image_transport::Publisher(it.advertise("image_map", 1)));
+      pub_clean_depth_image.reset(new image_transport::Publisher(it.advertise("image_clean_depth_image", 1)));
+
+
+
       std::vector<cv::String> filenames;
       cv::String folder = cv::String(argv[1]);
       cv::String pattern = folder;
@@ -205,10 +255,9 @@ int main(int argc, char** argv)
         startImage = numImages;
       }
 
-      Interface::Ptr interface(new Interface( configFolder, carName ) );
-      interface->init();
-      interface->startDebugDumping( "/tmp/recordedData/" );
-      interface->getStreetPatcher()->setSearchParkingLots( false );
+      Interface interface( configFolder, carName );
+      interface.startDebugDumping( "/tmp/recordedData/" );
+      interface.getStreetPatcher()->setSearchParkingLots( false );
 
       // Look for a maneuverlist in the given directory:
 
@@ -220,13 +269,13 @@ int main(int argc, char** argv)
       {
         std::stringstream strStream;
         strStream << maneuverListFile.rdbuf();//read the file
-        interface->setManeuverList( strStream.str() );
+        interface.setManeuverList( strStream.str() );
         std::cout << "Opened maneuverlist: " << strStream.str() << std::endl;
       } else {
         std::cout << "Could not open maneuerList.xml." << std::endl;
       }
         std::cout << "Send Jury Get Ready" << std::endl;
-      interface->setJuryCommand( action_GETREADY, 0 );
+      interface.setJuryCommand( action_GETREADY, 0 );
 
       std::vector<ExtendedPose2d> carPoses;
       // Check if there is a carPose.txt in the folder. If so, open it and read the car poses:
@@ -300,7 +349,7 @@ int main(int argc, char** argv)
           std::cout<<"US Frame: "<<usSensors[usSampleNumber].frame<<"UsSampleNumber: "<<usSampleNumber<<std::endl;
           while(usSensors[usSampleNumber].frame == i)
           {
-            interface->setUsSensor(usSensors[usSampleNumber].usDataRaw);
+            interface.setUsSensor(usSensors[usSampleNumber].usDataRaw);
             std::cout<<"Read us Data for Frame: "<<i<<std::endl;
             if(usSampleNumber < usSensors.size()-1)
             {
@@ -320,7 +369,7 @@ int main(int argc, char** argv)
 
         /*if( i == startImage )
         {
-          interface->getStreetPatcher()->setAPrioriVote(
+          interface.getStreetPatcher()->setAPrioriVote(
                 ExtendedPose2d( carPose.getX() + 1,
                                 carPose.getY() + 0.22, carPose.getYaw()) );
         }*/
@@ -336,13 +385,13 @@ int main(int argc, char** argv)
           std::cout<<"Last file was: "<<filenames[i-1]<<std::endl;
           break;
         }
-        interface->setCarPose( carPose );
+        interface.setCarPose( carPose );
 
-        std::cout << "Steering: " << interface->getSteering() <<
-                     " Speed: " << interface->getSpeed() << std::endl;
+        std::cout << "Steering: " << interface.getSteering() <<
+                     " Speed: " << interface.getSpeed() << std::endl;
 
         // Find patches and update street:
-        interface->setCameraImage( image, false );
+        interface.setCameraImage( image, false );
 
 
         boost::match_results<std::string::const_iterator> res;
@@ -357,8 +406,8 @@ int main(int argc, char** argv)
           if( image.data )
           {
 
-            interface->setDepthImage( image );
-            depthImageDebug = interface->getDepthImageProcessor()->getDebugImage(image);
+            interface.setDepthImage( image );
+            depthImageDebug = interface.getDepthImageProcessor()->getDebugImage(image);
 
           }
 
@@ -367,7 +416,7 @@ int main(int argc, char** argv)
 #ifndef compileOnCar
 
         // Draw everything on screen:
-        showDebugOutput( *interface, image,depthImageDebug, carPose );
+        showDebugOutput( &interface, image,depthImageDebug, carPose );
 
         int code;
         if( animate )
@@ -381,15 +430,15 @@ int main(int argc, char** argv)
         }
         else if ( char(code) == 82 || char(code) == 114 )		// r to reset
         {
-          //interface->getPatcher()->reset();
+          //interface.getPatcher()->reset();
           //Environment::getInstance()->clearAllPatches();
           std::cout << "Send Jury Stop" << std::endl;
-          interface->setJuryCommand( action_STOP, 1 );
+          interface.setJuryCommand( action_STOP, 1 );
           std::cout << "Send Jury Start" << std::endl;
-          interface->setJuryCommand( action_START, 1 );
+          interface.setJuryCommand( action_START, 1 );
 
-          interface->reset();
-          showDebugOutput( *interface, image, depthImageDebug, carPose );
+          interface.reset();
+          showDebugOutput( &interface, image, depthImageDebug, carPose );
           code = cv::waitKey(0);
         }
         else if ( char(code) == 65 || char(code) == 97 )	// a to animate
@@ -405,13 +454,13 @@ int main(int argc, char** argv)
               carPose.getX() + dx*cos( carPose.getYaw() ) - dy*sin( carPose.getYaw() ),
               carPose.getY() + dx*sin( carPose.getYaw() ) + dy*cos( carPose.getYaw() ),
               carPose.getYaw() );
-          interface->getStreetPatcher()->setAPrioriVote( votePose );
+          interface.getStreetPatcher()->setAPrioriVote( votePose );
 
         }
 #endif
         if(i == startImage){
             std::cout << "Send Jury Start" << std::endl;
-            interface->setJuryCommand( action_START, 0 );
+            interface.setJuryCommand( action_START, 0 );
         }
       }
 

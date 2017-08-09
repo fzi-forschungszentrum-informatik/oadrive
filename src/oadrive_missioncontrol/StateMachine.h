@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -35,7 +35,7 @@
 #include <oadrive_world/EventRegion.h>
 #include <oadrive_world/Patch.h>
 #include <oadrive_world/TrajectoryFactory.h>
-#include <oadrive_trafficsign/aadc_roadSign_enums.h>
+#include <oadrive_world/aadc_roadSign_enums.h>
 #include <oadrive_util/Config.h>
 #include <oadrive_util/Broker.h>
 #include <oadrive_control/DriverModule.h>
@@ -196,7 +196,7 @@ struct EvFinished : sc::event< EvFinished > {};
 // passed as the second template parameter.
 struct StateMachine : sc::state_machine< StateMachine, StateInit >
 {
-  StateMachine( IControl4MC* controller, DriverModule* driverModule,
+  StateMachine( IControl4MC::Ptr controller, DriverModule* driverModule,
       TrajectoryFactory* trajectoryFactory, StreetPatcher* streetPatcher )
   {
     mController = controller;
@@ -260,7 +260,7 @@ struct StateMachine : sc::state_machine< StateMachine, StateInit >
   enumManeuver getCurrentManeuver() { return mManeuverList->getCurrentManeuver(); }
   enumManeuver getPreviousManeuer() { return mManeuverList->getPreviosManeuver(); }
 
-  IControl4MC* getController() { return mController; }
+  IControl4MC::Ptr getController() { return mController; }
   DriverModule* getDriverModule() { return mDriverModule; }
   TrajectoryFactory* getTrajectoryFactory() { return mTrajectoryFactory; }
   StreetPatcher* getStreetPatcher() { return mStreetPatcher; }
@@ -307,7 +307,7 @@ struct StateMachine : sc::state_machine< StateMachine, StateInit >
 
   private:
   ManeuverListPtr mManeuverList;
-  IControl4MC* mController;
+  IControl4MC::Ptr mController;
   DriverModule* mDriverModule;
   TrajectoryFactory* mTrajectoryFactory;
   StreetPatcher* mStreetPatcher;
@@ -443,7 +443,7 @@ struct StateReady : sc::state< StateReady, StateWorking >
     LOGGING_INFO( mcLogger, "[SM] StateReady entered" << endl);
 
     // Reset the environment and everything else:
-    context< StateMachine >().getController()->reset();
+    //context< StateMachine >().getController()->reset();
 
     context< StateMachine >().getController()->setJuryState( stateCar_READY, manId);
     Environment::getInstance()->setAccOn(context< StateMachine >().isACCEnabled());

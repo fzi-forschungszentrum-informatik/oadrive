@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -35,7 +35,7 @@ using namespace boost;
 namespace oadrive{
 namespace missioncontrol{
 
-map<string, enumManeuver> ManeuverList::maneuverMap = map_list_of ("left", MANEUVER_LEFT) ("right", MANEUVER_RIGHT) ("straight", MANEUVER_STRAIGHT) ("parallel_parking", MANEUVER_PARKING_PARALLEL) ("cross_parking", MANEUVER_PARKING_CROSS) ("pull_out_left", MANEUVER_PULLOUT_LEFT) ("pull_out_right", MANEUVER_PULLOUT_RIGHT);
+map<string, enumManeuver> ManeuverList::maneuverMap = map_list_of ("finished", MANEUVER_FINISHED)("left", MANEUVER_LEFT) ("right", MANEUVER_RIGHT) ("straight", MANEUVER_STRAIGHT) ("parallel_parking", MANEUVER_PARKING_PARALLEL) ("cross_parking", MANEUVER_PARKING_CROSS) ("pull_out_left", MANEUVER_PULLOUT_LEFT) ("pull_out_right", MANEUVER_PULLOUT_RIGHT);
 
 ManeuverList::ManeuverList()
 {
@@ -49,8 +49,8 @@ boost::shared_ptr<IManeuverList> ManeuverList::getDummy() {
 
   boost::shared_ptr<ManeuverList> result(new ManeuverList());
   //Always add a last "Finished Sector"
-  shared_ptr<AADC_Sector> finSec(new AADC_Sector(INT32_MAX));
-  shared_ptr<AADC_Maneuver> finMan(new AADC_Maneuver(INT32_MAX, MANEUVER_FINISHED,finSec));
+  boost::shared_ptr<AADC_Sector> finSec(new AADC_Sector(INT32_MAX));
+  boost::shared_ptr<AADC_Maneuver> finMan(new AADC_Maneuver(INT32_MAX, MANEUVER_FINISHED,finSec));
 
   result->daManeuver.push_back(finMan);
   finSec->maneuvers.push_back(finMan);
@@ -60,11 +60,11 @@ boost::shared_ptr<IManeuverList> ManeuverList::getDummy() {
 }
 
 boost::shared_ptr<IManeuverList> ManeuverList::parse(string input) {
-  return parse(input,0);
+  return parse(input, IMC2Man::Ptr());
 }
 
 //! parses the maneuver list from an xml string. Throws an exception if input string can not be parsed.
-boost::shared_ptr<IManeuverList> ManeuverList::parse(string input, IMC2Man* mc) {
+boost::shared_ptr<IManeuverList> ManeuverList::parse(string input, IMC2Man::Ptr mc) {
   using boost::lexical_cast; //for parsing string to int
   using boost::bad_lexical_cast;
 
@@ -105,7 +105,7 @@ boost::shared_ptr<IManeuverList> ManeuverList::parse(string input, IMC2Man* mc) 
       catch(std::exception& e) {
         LOGGING_WARNING( mcLogger, "WARNING: Could not parse sector id!" << e.what() << endl );
       }
-      shared_ptr<AADC_Sector> newSector(new AADC_Sector(id));
+      boost::shared_ptr<AADC_Sector> newSector(new AADC_Sector(id));
 
       BOOST_FOREACH(const ptree::value_type & vv, v.second){
         if(vv.first == "AADC-Maneuver") {
@@ -144,7 +144,7 @@ boost::shared_ptr<IManeuverList> ManeuverList::parse(string input, IMC2Man* mc) 
               return static_pointer_cast<IManeuverList>(temp);
           }
 
-          shared_ptr<AADC_Maneuver> newManeuver(new AADC_Maneuver(id, maneuverMap[action], newSector));
+          boost::shared_ptr<AADC_Maneuver> newManeuver(new AADC_Maneuver(id, maneuverMap[action], newSector));
           newSector->maneuvers.push_back(newManeuver);
           result->daManeuver.push_back(newManeuver);
 
@@ -161,8 +161,8 @@ boost::shared_ptr<IManeuverList> ManeuverList::parse(string input, IMC2Man* mc) 
 
 
   //Always add a last "Finished Sector"
-  shared_ptr<AADC_Sector> finSec(new AADC_Sector(INT32_MAX));
-  shared_ptr<AADC_Maneuver> finMan(new AADC_Maneuver(INT32_MAX, MANEUVER_FINISHED,finSec));
+  boost::shared_ptr<AADC_Sector> finSec(new AADC_Sector(INT32_MAX));
+  boost::shared_ptr<AADC_Maneuver> finMan(new AADC_Maneuver(INT32_MAX, MANEUVER_FINISHED,finSec));
 
   result->daManeuver.push_back(finMan);
   finSec->maneuvers.push_back(finMan);

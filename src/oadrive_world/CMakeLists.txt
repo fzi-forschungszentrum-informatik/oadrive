@@ -18,6 +18,7 @@ ICMAKER_ADD_SOURCES(
 )
 
 ICMAKER_ADD_HEADERS(
+  aadc_roadSign_enums.h
   EnvObject.h
   Environment.h
   Patch.h

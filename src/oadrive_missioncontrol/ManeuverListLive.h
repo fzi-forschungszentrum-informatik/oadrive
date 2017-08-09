@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -47,7 +47,7 @@ namespace oadrive
       bool isFinished();
       bool setManeuverId(int maneuverEntryID);
       bool isDummy();
-      IMC2Man* mc;
+      IMC2Man::Ptr mc;
       void onMessage(const std::vector<char> &buf);
       bool isLive() { return true; }
 

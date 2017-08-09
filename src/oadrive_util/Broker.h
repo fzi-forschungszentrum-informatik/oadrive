@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -23,7 +23,11 @@
 #include <map>
 #include <boost/shared_ptr.hpp>
 #include <boost/asio/ip/address.hpp>
+
+#ifdef _IC_BUILDER_REDISCLIENT_
 #include <redisclient/redisasyncclient.h>
+#endif
+
 #include <boost/function.hpp>
 #include <boost/bind.hpp>
 #include <boost/ref.hpp>
@@ -78,8 +82,11 @@ class Broker
     const unsigned short mPort;
 
     boost::asio::io_service mIOService;
+
+#ifdef _IC_BUILDER_REDISCLIENT_
     RedisAsyncClient mSubscriber;
     RedisAsyncClient mPublisher;
+#endif
 
     std::string mCommandsReceiveChannel;
     std::string mStatusSendChannel;
@@ -88,10 +95,13 @@ class Broker
     void setConnected(bool b);
 
 
+#ifdef _IC_BUILDER_REDISCLIENT_
     void handleConnectedEventSub(boost::asio::io_service &ioService, RedisAsyncClient &redis,
         bool ok, const std::string &errmsg);
     void handleConnectedEventPub(boost::asio::io_service &ioService, RedisAsyncClient &redis,
         bool ok, const std::string &errmsg);
+#endif
+
     void eventReceivedCommand(boost::asio::io_service &ioService, const std::vector<char> &buf);
 
     void setLastReceivedManeuver( std::string msg );

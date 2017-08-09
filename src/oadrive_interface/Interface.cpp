@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -48,25 +48,26 @@ namespace interface{
 
 #define noPngDepth //if you remove this, you have also to change DepthImage
 
-Interface::Interface( std::string configFolder, std::string carName, IControl4MC* iControl4MC )
+Interface::Interface( std::string configFolder, std::string carName, IControl4MC::Ptr iControl4MC )
 //we need mLogger only once
   : mConfigPath( Config::setConfigPath( configFolder, carName ) )
   , mCarName( carName )
   , mBirdViewCalFile( ( path(configFolder) / carName / "BirdviewCal.yml").string() )
   , mLogger( (path(configFolder) / "log.xml").string() )
   , mCoordConverter( mBirdViewCalFile )
-  , mTimer()
+  , mTimer(new oadrive::util::Timer) // Constructor Timer
   , mDriver()
   , mStreetPatcher( 3.0, &mCoordConverter, true, true )
   , mTrajectoryFactory()
   , mIControl4MC( iControl4MC )
-  , mMissionControl( this, &mDriver, &mTrajectoryFactory, &mStreetPatcher )
   #ifdef noPngDepth
   , mProcessSensor (( path(configFolder) / carName / "DepthRef.yml").string(),( path(configFolder) / carName / "calUs.yml").string(),&mCoordConverter)
   #else
   , mProcessSensor (( path(configFolder) / carName / "DepthRef.png").string(),( path(configFolder) / carName / "calUs.yml").string(),&mCoordConverter)
   #endif
+#ifdef _IC_BUILDER_OADRIVE_TRAFFICSIGN_
   , mTrafficSignDetectorAruco( &mCoordConverter, configFolder )
+#endif
   , mImageCounter( 0 )		// for debugging
   , mLastBirdViewImage( mCoordConverter.getImgSizeBirdView(), CV_8UC3 )
   , mLastBirdViewImageGray( mCoordConverter.getImgSizeBirdView(), CV_8UC1 )
@@ -82,7 +83,7 @@ Interface::Interface( std::string configFolder, std::string carName, IControl4MC
   LOGGING_INFO( interfaceLogger, "Initialized with config file: " << configFolder <<
                 endl << flush);
 
-  Environment::init( &mCoordConverter, &mDriver, &mTimer );
+  Environment::init( &mCoordConverter, &mDriver, mTimer );
 
   // Let factory load all trajectories:
   path trajectoryDirectory( configFolder );
@@ -91,21 +92,28 @@ Interface::Interface( std::string configFolder, std::string carName, IControl4MC
   //mTrajectoryFactory.loadTrajectoryDatabase( trajectoryDirectory.string() );
   TrajectoryDatabase::load( trajectoryDirectory.string() );
   LOGGING_INFO(interfaceLogger, "I think my name is "<<carName<<endl);
+}
 
+void Interface::init()
+{
+  mMissionControl.reset(new oadrive::missioncontrol::MissionControl( shared_from_this(), &mDriver, &mTrajectoryFactory, &mStreetPatcher) );
+  mMissionControl->init();
 
-  Environment::getInstance()->setEventListener( &mMissionControl );
+  Environment::getInstance()->setEventListener( mMissionControl );
   mBirdViewConverter.loadConfig( mBirdViewCalFile );
   //mTimer();
 
+#ifdef _IC_BUILDER_OADRIVE_TRAFFICSIGN_
   // give traffic sing detector bird view converter that it can get the camera matrix and distortion coefficients
   mTrafficSignDetectorAruco.setCameraParameters(mBirdViewConverter);
+#endif
 
   // DEBUG: drive fixed trajectory:
   //mTrajectoryFactory.setFixedTrajectory( MANEUVER_PULLOUT_LEFT );
   //mTrajectoryFactory.generateFromPatches();
 
-  mTimer.setTimer( 1000, TIMER_TYPE_SEND_MAP );
-  mTimer.addListener( this );
+  mTimer->setTimer( 1000, TIMER_TYPE_SEND_MAP );
+  mTimer->addListener( shared_from_this() );
 }
 
 Interface::~Interface()
@@ -125,15 +133,15 @@ void Interface::reset()
   LOGGING_INFO( interfaceLogger, "----------------------------------------------" << endl );
   LOGGING_INFO( interfaceLogger, "-- Resetting world" << endl );
   LOGGING_INFO( interfaceLogger, "----------------------------------------------" << endl );
-  mTimer.clearAllTimers();
+  mTimer->clearAllTimers();
   //setNewOrigin();
   Environment::reset();
   mStreetPatcher.reset();
   mDriver.reset();
   mTrajectoryFactory.clearOldTraj();
   // Should also be called by setting the empty trajectory, but just in case:
-  Environment::getInstance()->setEventListener( &mMissionControl );
-  mTimer.setTimer( 1000, TIMER_TYPE_SEND_MAP );
+  Environment::getInstance()->setEventListener( mMissionControl );
+  mTimer->setTimer( 1000, TIMER_TYPE_SEND_MAP );
 }
 
 void Interface::setCameraImage( cv::Mat image, bool isBirdView )
@@ -165,7 +173,7 @@ void Interface::setCameraImage( cv::Mat image, bool isBirdView )
   bool endOfTrajctoryEvent = mDriver.checkEndOfTrajectoryFlag();
   if( endOfTrajctoryEvent )
   {
-    mMissionControl.eventTrajectoryEndReached();
+    mMissionControl->eventTrajectoryEndReached();
     Environment::getInstance()->setEndOfTrajReached(true);
   }
 
@@ -217,8 +225,13 @@ void Interface::setCameraImage( cv::Mat image, bool isBirdView )
 
   // give image to traffic sign detector
 
+#ifdef _IC_BUILDER_OADRIVE_TRAFFICSIGN_
   LOGGING_INFO(interfaceLogger, " Detecting Traffic signs .... " <<endl);
   mTrafficSignDetectorAruco.detectMarkers(gray);
+#else
+  LOGGING_WARNING(interfaceLogger, " Not detecting Traffic signs! Built without support for Traffic Sign Detection." <<endl);
+#endif
+
 
 
   ptime now = microsec_clock::local_time();
@@ -243,7 +256,7 @@ void Interface::setCameraImage( cv::Mat image, bool isBirdView )
 
   if( streetPatcherWasInitialized == false )
     if( mStreetPatcher.getIsInitialized() == true )
-      mMissionControl.eventStreetPatcherIsInitialized();
+      mMissionControl->eventStreetPatcherIsInitialized();
 
   //timer.reset();
   //timer.start();
@@ -252,22 +265,29 @@ void Interface::setCameraImage( cv::Mat image, bool isBirdView )
   //float timeTrafficSign = timer.value;
   //std::cout << "traffic sign time: "<<timeTrafficSign<<std::endl;
 
+  if(mMissionControl->m_maneuverList->isFinished())
+  {
+    std::cerr << "setting eventParcourFinished ... " << std::endl;
+    mMissionControl->eventParcourFinished();
+  }
+
+
   LOGGING_INFO(interfaceLogger, " Do the rest .... " <<endl);
   if( Broker::isActive() )
   {
     if( Broker::getInstance()->getTurnCommandReceived() )
     {
-      mMissionControl.eventUTurn();
+      mMissionControl->eventUTurn();
     }
     enumSpeedCommand command = Broker::getInstance()->getLastSpeedCommand();
     if( command != SPEED_COMMAND_NONE )
     {
-      mMissionControl.setBoostCommand( command );
+      mMissionControl->setBoostCommand( command );
     }
     bool stopped = Broker::getInstance()->getHasReceivedStopCommand();
     if( stopped )
     {
-      mMissionControl.eventParcourFinished();
+      mMissionControl->eventParcourFinished();
     }
   }
 
@@ -313,6 +333,9 @@ void Interface::setCarPose( const ExtendedPose2d &carPose )
     mLogTrajectory.push_back( carPose );
 
   LOGGING_INFO(interfaceLogger, " Car pose updated ." <<endl);
+
+  // new speed, update braking lights
+  updateBrakingLights( mDriver.getSpeed() );
 }
 
 void Interface::setUsSensor(oadrive::obstacle::usSensor measurements )
@@ -335,54 +358,10 @@ void Interface::setUsSensor(oadrive::obstacle::usSensor measurements )
   LOGGING_INFO(interfaceLogger, " US data processed ... " <<endl);
 }
 
-float Interface::getSteering()
+float Interface::getSpeed() const
 {
-  //return M_PI/10.0f;	// debug angle, slight left turn
-  return mDriver.getSteeringAngle();
-}
-
-float Interface::getSpeed()
-{
-  float returnSpeed = mDriver.getSpeed();
+  const float returnSpeed = mDriver.getSpeed();
   LOGGING_INFO(interfaceLogger, "Speed: " << returnSpeed << endl);
-
-  // are we breaking or stopping
-    if(mLastSpeed - returnSpeed > 0.1 || returnSpeed == 0) {
-      if(!mBrakeLightsOn) {
-        // turn on breaking lights
-        setLights(BRAKE_LIGHT, 1);
-        mBrakeLightsOn = true;
-      }
-    }
-    else {
-      if(mBrakeLightsOn) {
-        // turn off breaking lights
-        setLights(BRAKE_LIGHT, 0);
-        mBrakeLightsOn = false;
-      }
-    }
-
-    // are we driving backwards?
-    if(returnSpeed < 0) {
-      if(!mReverseLightsOn) {
-        // turn on reverse lights
-        setLights(REVERSE_LIGHT, 1);
-        mReverseLightsOn = true;
-      }
-    }
-    else {
-      if(mReverseLightsOn) {
-        // turn off reverse lights
-        setLights(REVERSE_LIGHT, 0);
-        mReverseLightsOn = false;
-      }
-    }
-
-    // set last speed to current speed
-    mLastSpeed = returnSpeed;
-
-
-  LOGGING_INFO(interfaceLogger, " got Speed " <<endl);
   return returnSpeed;
 }
 
@@ -409,7 +388,7 @@ void Interface::processJuryCommands()
   for( std::vector<JuryCommand>::iterator it = mJuryCommandQueue.begin();
       it != mJuryCommandQueue.end(); it ++ )
   {
-    mMissionControl.eventJurySignalReceived( it->action, it->maneuverEntryID );
+    mMissionControl->eventJurySignalReceived( it->action, it->maneuverEntryID );
   }
   mJuryCommandQueue.clear();
   mtx.unlock();
@@ -434,7 +413,7 @@ void Interface::processNewManeuverList()
   if( mNewManeuverlistReceived )
   {
     mNewManeuverlistReceived = false;
-    mMissionControl.eventManeuverListReceived( mManeuverList );
+    mMissionControl->eventManeuverListReceived( mManeuverList );
     if( mDebugActive )
     {
       std::string fileName = mDebugOutputPath;
@@ -450,7 +429,7 @@ void Interface::processNewManeuverList()
 
 void Interface::incrementTime(int milliSeconds)
 {
-  mTimer.setTimeIncrement(milliSeconds);
+  mTimer->setTimeIncrement(milliSeconds);
 }
 
 
@@ -567,6 +546,44 @@ void Interface::dumpDebugData( const ExtendedPose2d &currentCarPose, cv::Mat ima
   frameTimer.reset();
   frameTimer.start();
   mImageCounter ++;
+}
+
+void Interface::updateBrakingLights( float speed )
+{
+  // are we breaking or stopping
+  if(mLastSpeed - speed > 0.1 || speed == 0) {
+    if(!mBrakeLightsOn) {
+      // turn on breaking lights
+      setLights(BRAKE_LIGHT, 1);
+      mBrakeLightsOn = true;
+    }
+  }
+  else {
+    if(mBrakeLightsOn) {
+      // turn off breaking lights
+      setLights(BRAKE_LIGHT, 0);
+      mBrakeLightsOn = false;
+    }
+  }
+
+  // are we driving backwards?
+  if(speed < 0) {
+    if(!mReverseLightsOn) {
+      // turn on reverse lights
+      setLights(REVERSE_LIGHT, 1);
+      mReverseLightsOn = true;
+    }
+  }
+  else {
+    if(mReverseLightsOn) {
+      // turn off reverse lights
+      setLights(REVERSE_LIGHT, 0);
+      mReverseLightsOn = false;
+    }
+  }
+
+  // set last speed to current speed
+  mLastSpeed = speed;
 }
 
 cv::Mat Interface::generateDebugFeatureImage()
@@ -701,7 +718,7 @@ void Interface::eventTimerFired( timerType type, unsigned long timerID )
       EnvironmentPtr env = Environment::getInstance();
       Broker::getInstance()->publish(CHANNEL_SEND_MAP, env->toJson(2.0));
     }
-    mTimer.setTimer( 1000, TIMER_TYPE_SEND_MAP );
+    mTimer->setTimer( 1000, TIMER_TYPE_SEND_MAP );
   }
 }
 

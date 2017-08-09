@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -61,6 +61,8 @@
 #include <boost/function.hpp>
 
 #include <oadrive_missioncontrol/mcLogging.h>
+
+// This is bad! Don't use "using namespace" in header files! TODO: Remove!
 using icl_core::logging::endl;
 using icl_core::logging::flush;
 
@@ -74,12 +76,19 @@ using icl_core::logging::flush;
 
 namespace oadrive{
 namespace missioncontrol{
+
+// This is bad! Don't use "using namespace" in header files! TODO: Remove!
 using namespace oadrive::world;
 using namespace oadrive::control;
 using namespace oadrive::lanedetection;
 using namespace oadrive::util;
 
-class MissionControl : public WorldEventListener, public TimerEventListener, public IMC2Man {
+class MissionControl : public WorldEventListener, public TimerEventListener, public IMC2Man, public boost::enable_shared_from_this<MissionControl> {
+
+public:
+  typedef boost::shared_ptr<MissionControl> Ptr;
+  typedef boost::shared_ptr<const MissionControl> ConstPtr;
+
 
   struct juryActionsTupel {
     juryActions action;
@@ -87,10 +96,14 @@ class MissionControl : public WorldEventListener, public TimerEventListener, pub
   };
 
 public:
-  MissionControl(IControl4MC* controller,
+  MissionControl(IControl4MC::Ptr controller,
                  DriverModule* driverModule = NULL,
                  TrajectoryFactory* trajectoryFactory = NULL,
                  StreetPatcher* streetPatcher = NULL );
+
+  /*! constructor extension for functions that are not allowed in constructor (such as shared_from_this)
+   */
+  void init();
 
   void eventJurySignalReceived (juryActions ja, int maneuverEntryID );
 
@@ -144,19 +157,16 @@ public:
   /*! Lets the MissionControl know that there has been a new boost command (Kuer). */
   void setBoostCommand( enumSpeedCommand command );
 
+  boost::shared_ptr<IManeuverList> m_maneuverList;
+
 private:
-  IControl4MC* controller;
+  IControl4MC::Ptr controller;
   StateMachine mStateMachine;
   TrajectoryFactory* tf;
   DriverModule* dm;
   StreetPatcher* sp;
 
   std::map<EventRegionPtr,int> currentRegions;
-
-  boost::shared_ptr<IManeuverList> m_maneuverList;
-
-
-
 
   std::list<PatchPtr> m_crossings;
 

@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -37,7 +37,7 @@ using namespace oadrive::lanedetection;
 namespace oadrive{
 namespace missioncontrol{
 
-MissionControl::MissionControl( IControl4MC* controller, DriverModule* driverModule,
+MissionControl::MissionControl( IControl4MC::Ptr controller, DriverModule* driverModule,
     TrajectoryFactory* trajectoryFactory, StreetPatcher* streetPatcher )
   : mStateMachine( controller, driverModule, trajectoryFactory, streetPatcher )
   , tf(trajectoryFactory)
@@ -57,17 +57,20 @@ MissionControl::MissionControl( IControl4MC* controller, DriverModule* driverMod
 
   mStateMachine.setManeuverList( m_maneuverList );
   mStateMachine.initiate();
+}
 
+void MissionControl::init()
+{
   // Start listening to timer events. From now on, for every timer,
   // my eventTimerFired function will be calle.d
-  controller->getTimer()->addListener( this );
+  controller->getTimer()->addListener( shared_from_this() );
 }
 
 
 void MissionControl::eventManeuverListReceived( std::string maneuverList )
 {
   LOGGING_INFO(mcLogger, "Maneuverlist received."<<endl);
-  m_maneuverList = ManeuverList::parse(maneuverList, this);
+  m_maneuverList = ManeuverList::parse(maneuverList, shared_from_this());
   //TODO fire we are ready.
 
   mStateMachine.setManeuverList( m_maneuverList );

@@ -39,6 +39,9 @@ ICMAKER_DEPENDENCIES(EXPORT
   oadrive_core
   Boost
   Boost_THREAD
+)
+
+ICMAKER_DEPENDENCIES(EXPORT OPTIONAL
   redisclient
 )
 

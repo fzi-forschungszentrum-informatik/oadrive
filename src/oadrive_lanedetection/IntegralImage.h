@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -44,7 +44,7 @@ public:
   cv::Point2i rotatePoint(cv::Point2i& vectorToBeRotated);
 
 private:
-  static const float angle = 0.7071067811865475244008443621048490392848359376884740; // cos(Pi/4)=sin(Pi/4)
+  static const float ANGLE; // cos(Pi/4)=sin(Pi/4)
 
 };
 

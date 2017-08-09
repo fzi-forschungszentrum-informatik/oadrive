@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -29,7 +29,7 @@
 #include <boost/filesystem.hpp>
 #include <oadrive_lanedetection/lanedetectionLogging.h>
 #include <oadrive_world/TrafficSign.h>
-#include <oadrive_trafficsign/aadc_roadSign_enums.h>
+#include <oadrive_world/aadc_roadSign_enums.h>
 
 #include <oadrive_util/Config.h>
 

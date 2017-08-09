@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -54,6 +54,7 @@ void Broker::eventReceivedCommand(
     setHasReceivedStopCommand();
 }
 
+#ifdef _IC_BUILDER_REDISCLIENT_
 void Broker::handleConnectedEventSub(
     boost::asio::io_service &ioService, RedisAsyncClient &redis,
     bool ok, const std::string &errmsg)
@@ -72,6 +73,7 @@ void Broker::handleConnectedEventSub(
   }
 }
 
+
 void Broker::handleConnectedEventPub(
     boost::asio::io_service &ioService, RedisAsyncClient &redis,
     bool ok, const std::string &errmsg)
@@ -87,6 +89,7 @@ void Broker::handleConnectedEventPub(
     LOGGING_ERROR( utilLogger, "Broker could not connect to redis!" << endl );
   }
 }
+#endif
 
 
 
@@ -94,8 +97,10 @@ Broker::Broker ()
   : mConnected( false )
   , mPort( 6379 )
   , mIOService()
+#ifdef _IC_BUILDER_REDISCLIENT_
   , mSubscriber( mIOService )
   , mPublisher( mIOService )
+#endif
   , mLastReceivedManeuver( MANEUVER_RIGHT )
   , mReceivedTurnCommand( false )
   , mLastSpeedCommand( SPEED_COMMAND_NONE )
@@ -130,6 +135,7 @@ Broker::Broker ()
     LOGGING_INFO( utilLogger, "Channel: " << it->first << ") " << it->second << endl );
   } 
 
+#ifdef _IC_BUILDER_REDISCLIENT_
   mSubscriber.asyncConnect( address, mPort,
       boost::bind(
         &Broker::handleConnectedEventSub, this,
@@ -143,6 +149,9 @@ Broker::Broker ()
         boost::ref( mIOService ),
         boost::ref( mSubscriber ),
         _1, _2 ) );
+#else
+  LOGGING_WARNING( utilLogger, "Built without redisclient. Broker functions won't work as expected!" << endl );
+#endif
 
   //mIOService.run();
   // Run in seperate thread:
@@ -174,7 +183,12 @@ void Broker::publish( ChannelEnum channel, std::string msg )
     LOGGING_INFO( utilLogger, "Publishing: " << endl <<
         "\t" << mChannelNames[channel] << " (long message)" << endl );
   }
+
+#ifdef _IC_BUILDER_REDISCLIENT_
   mPublisher.publish( mChannelNames[channel], msg );
+#else
+  LOGGING_ERROR( utilLogger, "Not publishing a message via redisclient! This was built without redisclient support!" << endl );
+#endif
 }
 
 bool Broker::isConnected()

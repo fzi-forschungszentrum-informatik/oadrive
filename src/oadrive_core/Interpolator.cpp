@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -159,11 +159,11 @@ ExtendedPose2d Interpolator::interpolateLinear(const ExtendedPose2d& p1, const E
 {
   ExtendedPose2d interpolated;
   interpolated.pose() = interpolateLinear(p1.pose(), p2.pose(), ratio);
-  if (!isnan(p1.getVelocity()) && !isnan(p2.getVelocity()))
+  if (!std::isnan(p1.getVelocity()) && !std::isnan(p2.getVelocity()))
   {
     interpolated.setVelocity(interpolateLinear(p1.getVelocity(), p2.getVelocity(), ratio));
   }
-  if (!isnan(p1.getCurvature()) && !isnan(p2.getCurvature()))
+  if (!std::isnan(p1.getCurvature()) && !std::isnan(p2.getCurvature()))
   {
     interpolated.setCurvature(interpolateLinear(p1.getCurvature(), p2.getCurvature(), ratio));
   }

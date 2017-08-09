@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -23,6 +23,8 @@
 
 using namespace std;
 using namespace cv;
+
+const float IntegralImageRotated::ANGLE = 0.7071067811865475244008443621048490392848359376884740;
 
 void IntegralImage::setIntegralImage(Mat& integralImage) {
   this->integralImage = integralImage;
@@ -86,8 +88,8 @@ int IntegralImageRotated::boxSum(Point2i (&points)[4]) {
 
 Point2i IntegralImageRotated::rotatePoint(Point2i& vectorToBeRotated) {
   Point2i vectorRotated;
-  vectorRotated.x = round( angle * ( (float) vectorToBeRotated.x + (float) vectorToBeRotated.y ));
-  vectorRotated.y = round( angle * ( - (float) vectorToBeRotated.x + (float) vectorToBeRotated.y ));
+  vectorRotated.x = round( ANGLE * ( (float) vectorToBeRotated.x + (float) vectorToBeRotated.y ));
+  vectorRotated.y = round( ANGLE * ( - (float) vectorToBeRotated.x + (float) vectorToBeRotated.y ));
 
   return vectorRotated;
 }

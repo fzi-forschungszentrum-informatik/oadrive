@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -106,7 +106,7 @@ usSensor ProcessSensors::getQuantilesOfRecentUsSensorValues()
     std::sort( bufferRearRight.begin(), bufferRearRight.end() );
 
     // Retrieve the median values:
-    unsigned int quantileIndex = floor( bufferFrontLeft.size()/2 );
+    unsigned int quantileIndex = oadrive::core::floor<unsigned int>( bufferFrontLeft.size()/2 );
     quantiles.frontLeft = bufferFrontLeft[quantileIndex];
     quantiles.frontCenterLeft = bufferFrontCenterLeft[quantileIndex];
     quantiles.frontCenter = bufferFrontCenter[quantileIndex];

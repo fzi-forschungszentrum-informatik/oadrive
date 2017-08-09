@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -27,7 +27,7 @@
 #include <iostream>
 #include <oadrive_core/Interpolator.h>
 #include <oadrive_world/worldLogging.h>
-#include <oadrive_trafficsign/aadc_roadSign_enums.h>
+#include <oadrive_world/aadc_roadSign_enums.h>
 #include <oadrive_util/Broker.h>
 #include <oadrive_util/Config.h>
 
@@ -52,7 +52,7 @@ namespace oadrive{
 namespace world{
 
 EnvironmentPtr Environment::init( CoordinateConverter* coordConverter, DriverModule* driver,
-    oadrive::util::Timer *timer )
+    oadrive::util::Timer::Ptr timer )
 {
   if( mInstance )
   {
@@ -61,6 +61,7 @@ EnvironmentPtr Environment::init( CoordinateConverter* coordConverter, DriverMod
         "\tCall init() only once, then use getInstance()." << endl );
   } else {
     mInstance = EnvironmentPtr( new Environment( coordConverter, driver, timer ) );
+    mInstance->initialize();
     LOGGING_INFO( worldLogger, "Constructed new Environment." << endl );
     if( getInstance()  )
     {
@@ -76,13 +77,14 @@ EnvironmentPtr Environment::reset()
 {
   if( mInstance )
   {
-    Timer* timer = mInstance->getTimer();
+    oadrive::util::Timer::Ptr mtimer = mInstance->getTimer();
     DriverModule* driver = mInstance->getDriver();
     CoordinateConverter* coordConverter = mInstance->getCoordConverter();
-    WorldEventListener* listener = mInstance->mEventListener;
+    WorldEventListener::Ptr listener = mInstance->mEventListener;
     ExtendedPose2d lastCarPose = mInstance->getCarPose();
     // Resetting the java-way: (:P)
-    mInstance = EnvironmentPtr( new Environment( coordConverter, driver, timer ) );
+    mInstance = EnvironmentPtr( new Environment( coordConverter, driver, mtimer ) );
+    mInstance->initialize();
     mInstance->setEventListener(listener);
     mInstance->updateCarPose(lastCarPose);
     LOGGING_INFO( worldLogger, "Environment was reset." << endl );
@@ -105,14 +107,14 @@ EnvironmentPtr Environment::getInstance()
 
 // Constructor. Is private!
 Environment::Environment( CoordinateConverter* coordConverter, DriverModule* driver,
-                          oadrive::util::Timer *timer )
+                          oadrive::util::Timer::Ptr timer )
   : mCar( new EnvObject( ExtendedPose2d( 0, 0, 0 ), CAR_WIDTH, CAR_LENGTH ) )
   , mCoordConverter( coordConverter )
   , mRememberObstacles( false )
   , mDriver( driver )
   , mPatchStitcher()
   , mMaxNumberOfUnsortedPatches( 20 )
-  , mEventListener( NULL )
+  , mEventListener()
   , mTimer(timer)
   , mTrajDebugCounter(0)
   , mCurrentUSSensorLimits( LIMIT_FOR_DRIVING )
@@ -128,9 +130,13 @@ Environment::Environment( CoordinateConverter* coordConverter, DriverModule* dri
   initUSSensorLimits();
 
   mDebugPointTime = microsec_clock::local_time();
-  if(mTimer != NULL){
+}
+
+void Environment::initialize()
+{
+  if(mTimer){
     LOGGING_INFO( worldLogger, "Registering Environment as timer event listener." << endl );
-    mTimer->addListener( this );
+    mTimer->addListener( shared_from_this() );
     //mTimer->setTimer( 1000, TIMER_TYPE_REMOVE_OBSTACLES );
     mTimer->setTimer(1000, TIMER_TYPE_REMOVE_OLD_OBJECTS);
   }
@@ -140,11 +146,11 @@ Environment::~Environment()
 {
   if( mTimer != NULL )
   {
-    mTimer->removeListener( this );
+    mTimer->removeListener( shared_from_this() );
   }
 }
 
-void Environment::setEventListener( WorldEventListener* listener )
+void Environment::setEventListener( WorldEventListener::Ptr listener )
 {
   mEventListener = listener;
 }
@@ -1691,7 +1697,7 @@ void Environment::interpolateTrajSpeed(Trajectory2d& traj, unsigned int ind1, un
 
     double startSpeed = std::max(zero,traj[ind1].getVelocity());
     double endSpeed;
-    if(isnan(traj[ind2].getVelocity())){
+    if(std::isnan(traj[ind2].getVelocity())){
       endSpeed = startSpeed;
     }
     else {
@@ -1719,7 +1725,7 @@ void Environment::updateTrajectorySpeed(Trajectory2d& traj){
 
     double speed0 = traj[0].getVelocity();
 
-    if(isnan(speed0) || speed0 <= 0){
+    if(std::isnan(speed0) || speed0 <= 0){
       speed0 = mDriver->getTargetSpeed();
       traj[0].setVelocity(speed0);
     }
@@ -1729,7 +1735,7 @@ void Environment::updateTrajectorySpeed(Trajectory2d& traj){
     bool hasObstacle = false;
     for (unsigned int i = 1; i < traj.size() ; i++) {
 
-      if(!isnan(traj[i].getVelocity()) ){
+      if(!std::isnan(traj[i].getVelocity()) ){
         interpolateTrajSpeed(traj,startIndex,i,hasObstacle);
         if(traj[i].getVelocity() < 0){
           hasObstacle = true;

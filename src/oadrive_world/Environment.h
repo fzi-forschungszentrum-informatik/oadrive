@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -53,6 +53,7 @@
 #include <vector>
 #include <boost/date_time/local_time/local_time.hpp>
 #include <boost/thread/mutex.hpp>
+#include <boost/enable_shared_from_this.hpp>
 #include <boost/shared_ptr.hpp>
 
 class EnvironmentPainter;
@@ -99,19 +100,24 @@ typedef std::list<DebugPoint, Eigen::aligned_allocator<DebugPoint> > DebugPointL
 class Environment;
 typedef boost::shared_ptr<Environment> EnvironmentPtr;
 
-class Environment: public TimerEventListener {
+class Environment: public TimerEventListener, public boost::enable_shared_from_this<Environment> {
   friend class EnvironmentPainter;	// let Painter access all of my private elements
 
 public:
+
+  typedef boost::shared_ptr<Environment> Ptr;
+  typedef boost::shared_ptr<const Environment> ConstPtr;
+
+  //shared_ptr<Spell> spellPtr = nullptr;
   /*! Constructs the singleton. Must only be called once. */
   static EnvironmentPtr init( oadrive::util::CoordinateConverter* coordConverter = NULL,
                oadrive::control::DriverModule* driver = NULL,
-               oadrive::util::Timer *timer = NULL);
+               oadrive::util::Timer::Ptr timer = oadrive::util::Timer::Ptr());
   /*! Returns an instance to the singleton.
    * Make sure Environment::init was called before!*/
   static EnvironmentPtr getInstance();
 
-  void setEventListener( WorldEventListener* listener );
+  void setEventListener( WorldEventListener::Ptr listener );
 
   /*! Re-initializes the environment (by deleting and recreating it)
    * Should be called when the position is reset.*/
@@ -330,7 +336,7 @@ public:
     Environment::mStorePosesBeforePatch = storePosesBeforePatch;
   }
 
-  oadrive::util::Timer* getTimer() { return mTimer; }
+  oadrive::util::Timer::Ptr getTimer() { return mTimer; }
   oadrive::control::DriverModule* getDriver() { return mDriver; }
   oadrive::util::CoordinateConverter* getCoordConverter() { return mCoordConverter; }
 
@@ -338,7 +344,11 @@ private:
   /*! Private so that it cannot be called */
   Environment( oadrive::util::CoordinateConverter* coordConverter = NULL,
                oadrive::control::DriverModule* driver = NULL,
-               oadrive::util::Timer *timer = NULL);
+               oadrive::util::Timer::Ptr timer = oadrive::util::Timer::Ptr());
+
+  /*! constructor extension for functions that are not allowed in constructor (such as shared_from_this)
+   */
+  void initialize();
   //Environment(Environment const&);        // copy constructor is private
   //Environment& operator=(Environment const&);  // assignment operator is private
 
@@ -369,7 +379,7 @@ private:
 
   unsigned int mMaxNumberOfUnsortedPatches;
 
-  WorldEventListener* mEventListener;
+  WorldEventListener::Ptr mEventListener;
   //void drawEnvObjects(cv::Mat img, double x, double y, double radius,float pixelsPerMeter);
 
   bool mAccOn;
@@ -404,7 +414,7 @@ private:
 
   //! \brief mTimer This timer is nessesary to remove objects which have a expiered time to live
   //! \note This timer has to be updated by the interface
-  oadrive::util::Timer* mTimer;
+  oadrive::util::Timer::Ptr mTimer;
 
   /*! Determines which traffic signs belong to which patches.
    * Should be called whenever a new patch of traffic sign has been found.

@@ -10,7 +10,6 @@ ICMAKER_ADD_SOURCES(
 ICMAKER_ADD_HEADERS(
   TrafficSignDetector.h
   TrafficSignDetAruco.h
-  aadc_roadSign_enums.h
   trafficSignLogging.h
 )
 

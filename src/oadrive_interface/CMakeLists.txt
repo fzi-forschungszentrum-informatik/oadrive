@@ -4,12 +4,12 @@ ICMAKER_SET("oadrive_interface")
 
 ICMAKER_ADD_SOURCES(
 	Interface.cpp
-        interfaceLogging.cpp
+    interfaceLogging.cpp
 )
 
 ICMAKER_ADD_HEADERS(
 	Interface.h
-        interfaceLogging.h
+    interfaceLogging.h
 )
 
 ICMAKER_LOCAL_CPPDEFINES(-DOADRIVE_EXPORT_SYMBOLS)
@@ -25,11 +25,15 @@ ICMAKER_DEPENDENCIES( EXPORT
   oadrive_world
   oadrive_missioncontrol
   oadrive_obstacle
-  oadrive_trafficsign
   Eigen3
   icl_core
   icl_core_logging
 )
+
+ICMAKER_DEPENDENCIES( EXPORT OPTIONAL
+  oadrive_trafficsign
+)
+
 
 ICMAKER_BUILD_LIBRARY()
 

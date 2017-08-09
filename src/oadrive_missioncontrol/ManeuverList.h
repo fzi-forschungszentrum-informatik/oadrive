@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -66,7 +66,7 @@ class ManeuverList : public IManeuverList {
 
 public:
   //! parses a given String to a Maneuver list
-  static boost::shared_ptr<IManeuverList> parse(string input,IMC2Man* mc);
+  static boost::shared_ptr<IManeuverList> parse(string input, IMC2Man::Ptr mc);
 
   //! cant make backCalls! Please dont use this anymore :)
   static boost::shared_ptr<IManeuverList> parse(string input);
@@ -134,7 +134,7 @@ private:
   vector<boost::shared_ptr<AADC_Maneuver> > daManeuver; //direct access to the maneuvers
   //! Maps a Maneuver as string to the correct enum!
   static map<string, enumManeuver> maneuverMap;
-  IMC2Man* mc;
+  IMC2Man::Ptr mc;
   ManeuverList();
 
 };

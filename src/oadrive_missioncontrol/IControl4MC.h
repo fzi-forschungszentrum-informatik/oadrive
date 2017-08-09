@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2016 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -35,11 +35,16 @@ namespace missioncontrol{
 
 class IControl4MC {
 public:
+
+  typedef boost::shared_ptr<IControl4MC> Ptr;
+  typedef boost::shared_ptr<const IControl4MC> ConstPtr;
+
+
   virtual void setJuryState( stateCar state, int manEntry) = 0;
 
   virtual void setLights( enumLight light, bool on ) = 0;
 
-  virtual oadrive::util::Timer* getTimer() = 0;
+  virtual oadrive::util::Timer::Ptr getTimer() = 0;
 
   virtual cv::Mat getLastBirdViewImage() = 0;
 
