@@ -1,3 +1,12 @@
+// -- BEGIN LICENSE BLOCK ----------------------------------------------
+// This program is free software licensed under the CDDL
+// (COMMON DEVELOPMENT AND DISTRIBUTION LICENSE Version 1.0).
+// You can find a copy of this license in LICENSE in the top
+// directory of the source code.
+//
+// © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// -- END LICENSE BLOCK ------------------------------------------------
+
 /*! Tests the driver module, which is used to hold and drive a trajectory.
  * Test written, because if the trajectory reaches an angle of 180°, the
  * lateral controller suddenly spits out very weird angles (180° jump?)
@@ -61,8 +70,8 @@ int main(int argc, char** argv )
   multiTraj.trajectories.push_back( traj );
 
   DriverModule driver;
-  driver.setTrajectory( multiTraj );
-  driver.setTargetSpeed(0.3);
+  driver.setMultiTrajectory( multiTraj );
+  driver.setMaxSpeed(0.3);
   driver.drive();
   //traj = driver.getTrajectory();
   //traj.toGnuplot( "/tmp/trajCircle" );
@@ -143,7 +152,7 @@ int main(int argc, char** argv )
     if (code == 1048676 )
       driver.drive();
     if(code == 1048691)
-      driver.halt();
+      driver.halt(false);
   }
 
   return 0;

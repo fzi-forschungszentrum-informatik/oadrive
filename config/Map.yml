@@ -1,0 +1,8 @@
+%YAML:1.0
+# Path to map file
+#Path: ../etc/worlds/empore.xml
+# Path: ../etc/worlds/vc2.xml
+# Path: /home/aadc/robot_folders/checkout/aadc18/ic_workspace/packages/oadrive/etc/worlds/testday.xml
+# Path: /home/aadc/robot_folders/checkout/aadc18/ic_workspace/packages/oadrive/etc/worlds/testevent.xml
+# Path: /home/aadc/robot_folders/checkout/aadc18/ic_workspace/packages/oadrive/etc/worlds/empore.xml
+Path: /home/aadc/robot_folders/checkout/aadc18/ic_workspace/packages/oadrive/etc/worlds/testday.xml

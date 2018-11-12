@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -25,6 +25,9 @@
 
 using icl_core::logging::endl;
 using icl_core::logging::flush;
+
+using namespace oadrive::core;
+using namespace oadrive::world;
 
 namespace oadrive{
 namespace obstacle{
@@ -194,7 +197,7 @@ void ProcessSensors::mergeObjectsToEnviroment(ExtendedPose2dVectorPtr objects, o
     else //there are no objects
     {*/
     oadrive::world::ObstaclePtr newObject(new oadrive::world::Obstacle(objects->at(i),0.05,0.05,sensorType));
-    Environment::getInstance()->addObstacle(newObject);
+    //Environment::getInstance()->addObstacle(newObject);
     //}
   }
 }

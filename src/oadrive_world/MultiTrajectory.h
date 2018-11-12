@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -28,6 +28,8 @@ namespace world {
 struct MultiTrajectory
 {
   std::vector<oadrive::core::Trajectory2d> trajectories;
+
+  MultiTrajectory() : trajectories(0) {}
 
   // Is this enough for Eigen Guidelines fix?
   // use a proper alignment when calling the constructor.

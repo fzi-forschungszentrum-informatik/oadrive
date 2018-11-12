@@ -1,4 +1,13 @@
 # this is for emacs file handling -*- mode: cmake; indent-tabs-mode: nil -*-
+# -- BEGIN LICENSE BLOCK ----------------------------------------------
+# This program is free software licensed under the CDDL
+# (COMMON DEVELOPMENT AND DISTRIBUTION LICENSE Version 1.0).
+# You can find a copy of this license in LICENSE in the top
+# directory of the source code.
+#
+# © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+# -- END LICENSE BLOCK ------------------------------------------------
+
 
 ICMAKER_SET("oadrive_util")
 
@@ -10,7 +19,8 @@ ICMAKER_ADD_SOURCES(
   utilLogging.cpp
   Timer.cpp
   Config.cpp
-  Broker.cpp
+  ImageHelper.cpp
+  Navigator.cpp
 )
 
 ICMAKER_ADD_HEADERS(
@@ -23,7 +33,8 @@ ICMAKER_ADD_HEADERS(
   TimerEventListener.h
   TimerTypes.h
   Config.h
-  Broker.h
+  ImageHelper.h
+  Navigator.h
 )
 
 ICMAKER_LOCAL_CPPDEFINES(-DOADRIVE_EXPORT_SYMBOLS)

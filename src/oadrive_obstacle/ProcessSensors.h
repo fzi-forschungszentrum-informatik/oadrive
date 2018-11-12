@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -20,6 +20,7 @@
 
 #ifndef OADRIVE_OBSTACLES_PROCESSUSSENSOR_H
 #define OADRIVE_OBSTACLES_PROCESSUSSENSOR_H
+
 #include <opencv2/core/core.hpp>
 #include <oadrive_obstacle/ProcessUS.h>
 #include <vector>
@@ -27,6 +28,9 @@
 #include <oadrive_world/Obstacle.h>
 #include <oadrive_util/CoordinateConverter.h>
 #include <oadrive_obstacle/ProcessDepth.h>
+#include <boost/thread/mutex.hpp>
+
+
 namespace oadrive{
 namespace obstacle{
 /*!
@@ -48,8 +52,8 @@ public:
   usSensor getQuantilesOfRecentUsSensorValues();
   ProcessDepth* getDepthImageProcessor(){return &mProcessDepth;}
   //! \brief put all the objects into the environment
-  void mergeObjectsToEnviroment(ExtendedPose2dVectorPtr objects, oadrive::world::SensorType sensorType);
-  void convertObjectsToWorld(ExtendedPose2dVectorPtr &objects, const ExtendedPose2d &carPos);
+  void mergeObjectsToEnviroment(core::ExtendedPose2dVectorPtr objects, world::SensorType sensorType);
+  void convertObjectsToWorld(core::ExtendedPose2dVectorPtr &objects, const core::ExtendedPose2d &carPos);
 
   void setFree(oadrive::world::SensorType sensor);
 

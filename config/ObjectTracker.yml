@@ -1,0 +1,25 @@
+%YAML:1.0
+---
+
+CarSpectralPowerDensity: 0.01
+PersonSpectralPowerDensity: 0.01
+# Gating: Mahalanobis distance threshold to consider that measurement belongs to object
+CarGate: 6.0
+PersonGate: 1.0
+CarGateForNewFilter: 20
+PersonGateForNewFilter: 1.0
+
+# ROI: Region of interest in [m]. Tracked objects that are outside of the ROI are deleted. X in car direction, Y to the left of the car. Center at the car's rear wheels
+# ROI_xMax: 3.0 # shuxiaos parameters
+# ROI_xMin: 0.0 # shuxiaos parameters
+ROI_xMax: 4.0
+ROI_xMin: -1.0
+ROI_yMax: 1.5
+ROI_yMin: -1.5  
+# if objects receive no measurements within <maxTimebeforeDeletion> in [seconds] (even though they should cause measurements according to their position), they are deleted
+# MaxTimeBeforeDeletionCar: 2.0 # shuxiaos parameters
+MaxTimeBeforeDeletionCar: 6.0
+MaxTimeBeforeDeletionSign: 10.0
+MaxTimeBeforeDeletionPerson: 1.0
+MaxTimeBeforeDeletionObstacle: 2.0
+

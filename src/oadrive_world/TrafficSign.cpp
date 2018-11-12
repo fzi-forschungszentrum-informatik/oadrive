@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -16,6 +16,9 @@
  * \author  Jan-Markus Gomer <uecxl@student.kit.edu>
  * \author  Micha Pfeiffer <ueczz@student.kit.edu>
  * \date    2016-01-19
+ * 
+ * \author  Simon Roesler <simon.roesler@student.kit.edu>
+ * \date    2018
  *
  */
 //----------------------------------------------------------------------
@@ -24,24 +27,38 @@
 
 using namespace oadrive::core;
 
-namespace oadrive{
-namespace world{
+namespace oadrive {
+namespace world {
 
-TrafficSign::TrafficSign( int type, double x, double y )
-  : EnvObject( ExtendedPose2d( x,y,0 ), 0, 0 )
-{
+TrafficSign::TrafficSign(TrafficSignType type, double x, double y)
+    : EnvObject(ExtendedPose2d(x, y, 0), 0, 0) {
   mTrafficSignType = type;
 }
 
-TrafficSign::TrafficSign( int type, const ExtendedPose2d &pose )
-  : EnvObject( pose, 0, 0 )
-{
+TrafficSign::TrafficSign(TrafficSignType type, const ExtendedPose2d &pose) : EnvObject(pose, 0, 0) {
   mTrafficSignType = type;
 }
 
-TrafficSign::~TrafficSign(){}
+TrafficSign::TrafficSign() :
+        EnvObject(ExtendedPose2d(0.f, 0.f, 0.f), 0.f, 0.f),
+        mTrafficSignType(INVALID)
+{
+}
 
+TrafficSign::~TrafficSign() {}
 
+bool TrafficSign::isIntersectionTrafficSign() const {
+    switch (this->getType())
+    {
+      case world::GIVE_WAY:
+      case world::STOP_AND_GIVE_WAY:
+      case world::UNMARKED_INTERSECTION:
+      case world::HAVE_WAY:
+        return true;
+      default:
+        return false;
+    }
+  }
 
-}	// namespace
-}	// namespace
+}  // namespace world
+}  // namespace oadrive

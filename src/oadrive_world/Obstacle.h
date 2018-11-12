@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -38,11 +38,10 @@
 #define TIME_TO_LIVE_US 20
 #define TIME_TO_LIVE_DEPTH 100
 
-using namespace oadrive::core;
-
-
-namespace oadrive{
-namespace world{
+namespace oadrive
+{
+namespace world
+{
 
 class Obstacle;	// predefine so shared_ptr can use it
 typedef boost::shared_ptr<Obstacle> ObstaclePtr;		// define before class because it uses the PatchPtr
@@ -56,13 +55,13 @@ enum SensorType{
 class Obstacle: public EnvObject
 {
 public:
-  Obstacle(const ExtendedPose2d &pose, double width, double height, SensorType type);
+  Obstacle(const core::ExtendedPose2d &pose, double width, double height, SensorType type);
   //!
   //! \brief update updates the position and teh probaility of the object with mor or less good algorithmens
   //! \param pos
   //! \param mType
   //!
-  void update(const ExtendedPose2d &pos, SensorType mType);
+  void update(const core::ExtendedPose2d &pos, SensorType mType);
 
   //! get the maximum speed regarding to the distance to this object
   double getMaxSpeed(double distance);

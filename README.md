@@ -7,6 +7,9 @@ Please consider the license information provided with this repository.
 You should have received a copy [LICENSE](LICENSE).
 
 
+**This Readme is currently outdated. We released version 4.0 of the code, used by Team AlpaKa in the Audi Autonomous Driving Cup 2018. The code can be used. The documentation will be updated after the competition.**
+
+
 This package provides basic autonomous driving functionalities
 with only little dependencies to quite common open source libraries. It is mainly used by student teams participating in the Audi Autonomous Driving Cup, e.g. Team KACADU 2016 (https://github.com/fzi-forschungszentrum-informatik/aadc2016) and Team KATANA 2015 (https://github.com/KAtana-Karlsruhe/AADC_2015_KAtana).
 

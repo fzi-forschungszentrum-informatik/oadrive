@@ -1,3 +1,12 @@
+// -- BEGIN LICENSE BLOCK ----------------------------------------------
+// This program is free software licensed under the CDDL
+// (COMMON DEVELOPMENT AND DISTRIBUTION LICENSE Version 1.0).
+// You can find a copy of this license in LICENSE in the top
+// directory of the source code.
+//
+// © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// -- END LICENSE BLOCK ------------------------------------------------
+
 #include "oadrive_util/CameraCalibration.h"
 #include "iostream"
 enum { DETECTION = 0, CAPTURING = 1, CALIBRATED = 2, WAITING = 3 };
@@ -68,7 +77,9 @@ int main(int argc, char** argv)
       std::cout<<"you can now adjust the image section then press a key and the file will be safed"<<std::endl;
       std::cout<<"Hit any Key to safe file!"<<std::endl;
       myCal.adjustPicture(image);
-      myCal.estimateCameraPose();
+      std::cout<<"Hit any Key to safe file!2"<<std::endl;
+      //myCal.estimateCameraPose();
+      std::cout<<"Hit any Key to safe file!3"<<std::endl;
       myCal.writeCalFile(calFilePath);
 
     }

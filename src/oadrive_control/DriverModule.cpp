@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -15,6 +15,11 @@
  * \author  Micha Pfeiffer <ueczz@student.kit.edu>
  * \date    2015-12-04
  *
+ * \author  Robin Andlauer <robin.andlauer@student.kit.edu>
+ * \date    2017-7-01
+ * 
+ * \author  Simon Roesler <simon.roesler@student.kit.edu>
+ * \date    2018
  */
 //----------------------------------------------------------------------
 
@@ -23,7 +28,7 @@
 #include <iomanip>
 #include "controlLogging.h"
 #include <oadrive_util/Config.h>
-#include <oadrive_util/Broker.h>
+//#include <oadrive_util/Broker.h>
 using icl_core::logging::endl;
 using icl_core::logging::flush;
 using namespace oadrive::world;
@@ -31,281 +36,247 @@ using namespace oadrive::world;
 namespace oadrive {
 namespace control {
 
-
 DriverModule::DriverModule()
-  : mLateralController()
-  , mCurrentTrajectoryIndex( 0 )
-  , mCurrentPose( 0, 0, 0 )
-  , mMaxSteering( (float)oadrive::util::Config::getDouble( "Driver", "MAX_STEERING", 29.9 ) )
-  , mMinSteering( (float)oadrive::util::Config::getDouble( "Driver", "MIN_STEERING", 10 ) )
+  : mMaxSteering((float)oadrive::util::Config::getDouble("Driver", "MaxSteering", 29.9))
+  , mCurrentTrajectoryIndex(0)
   , mCurrentSteering(0.0)
-  , mCurrentSpeed(0)
   , mTargetSpeed(0)
-  , mMaxSteeringSpeed((float)oadrive::util::Config::getDouble( "Driver", "MAX_STEERING_SPEED", 0.15 ))
+  , mMaxSpeed(1.0)
   , mDriving(false)
+  , mBraking(false)
   , mInitializedTrajectory(false)
   , mTrajectoryEndReached(false)
-  , mLastImageStamp(boost::posix_time::microsec_clock::local_time())
-  , mLowFrameRate(false)
+  , mCarFollowingDistance((float)oadrive::util::Config::getDouble("Driver", "CarFollowingDistance", 1.2))
+  , mCarFollowingP((float)oadrive::util::Config::getDouble("Driver", "CarFollowingP", 0.2))
+  , mCarFollowingMaxSpeed((float)oadrive::util::Config::getDouble("Driver", "CarFollowingMaxSpeed", 0.5))
+  , mLateralController(mMaxSteering)
+  , mMinSteeringToCap((float)oadrive::util::Config::getDouble("Driver", "MinSteeringToCap", 10))
+  , mMaxSteeringSpeed((float)oadrive::util::Config::getDouble("Driver", "MaxSteeringSpeed", 0.6))
+  , mMinSteeringSpeed((float)oadrive::util::Config::getDouble("Driver", "MinSteeringSpeed", 0.4))
+  , mRatioMinMaxSteeringSpeedToMinMaxSteering((mMaxSteeringSpeed - mMinSteeringSpeed) / (mMaxSteering - mMinSteeringToCap))
 {
-
-  double SPEED_NORMAL = oadrive::util::Config::getDouble( "MissionControl", "SPEED_NORMAL", 0.6 );
-
-   mMinSteeringSpeed = (float)oadrive::util::Config::getDouble( "Driver", "MIN_STEERING_SPEED", SPEED_NORMAL );
-   mRatioMinMaxSteeringSpeedToMinMaxSteering = (mMaxSteeringSpeed - mMinSteeringSpeed) / (mMaxSteering - mMinSteering) ;
 }
-
 
 DriverModule::~DriverModule()
 {
 }
 
 ///////////////////////////////////////////////////////////////
-// Public functions (mutex locked!)
-// A public function in the DriverModule must NEVER call another
-// public function, otherwise they will end up in a dead lock.
-// Instead, call private functions.
+// Public functions
 
-bool DriverModule::setTrajectory( const MultiTrajectory& traj )
+bool DriverModule::setMultiTrajectory(const MultiTrajectory& traj)
 {
-  mtx.lock();
   mTrajectoryEndReached = false;
   mInitializedTrajectory = false;
-  LOGGING_INFO( controlLogger, "[DriverModule] New MultiTrajectory received: " << endl
-		  << "\t(" << traj.trajectories.size() << " trajectories)" << endl );
-  mMultiTrajectory = traj;
-  if( traj.trajectories.size() > 0 )
-  {
 
+  mMultiTrajectory = traj;
+  if (traj.trajectories.size() > 0)
+  {
     mCurrentTrajectoryIndex = 0;
-    bool result = setTrajectory( mMultiTrajectory.trajectories[mCurrentTrajectoryIndex] );
-    mtx.unlock();
+    bool result = setTrajectory(mMultiTrajectory.trajectories[mCurrentTrajectoryIndex]);
     return result;
   }
-  mtx.unlock();
   return false;
 }
 
 void DriverModule::reset()
 {
-  mtx.lock();
-  privateHalt();
+  halt(false);
   mTrajectoryEndReached = false;
   mInitializedTrajectory = false;
   mMultiTrajectory = MultiTrajectory();
   mTrajectory = Trajectory2d ();
-  mLateralController.setTrajectory( mTrajectory );
+  mLateralController.setTrajectory(mTrajectory);
   mCurrentTrajectoryIndex = 0;
-  mtx.unlock();
-
 }
 
-
-void DriverModule::halt()
+void DriverModule::halt(const bool &active_brake)
 {
-  mtx.lock();
-  privateHalt();
-  mtx.unlock();
+  mDriving = false;
+  #if ACTIVE_BRAKING
+  mBraking = active_brake;
+  #endif
 }
+
 void DriverModule::drive()
 {
-  mtx.lock();
-  privateDrive();
-  mtx.unlock();
+  mDriving = true;
+  mBraking = false;
 }
 
-//FEATURE check if we are to far from trajectory
-void DriverModule::update( const ExtendedPose2d &carPose )
+void DriverModule::update(const ExtendedPose2d &carPose)
 {
-  if(mtx.try_lock() == false)
+  // lateral controlling:
+  if (mInitializedTrajectory)
   {
-    LOGGING_ERROR( controlLogger, "Locking failed @ DriverModule::update " << endl );
-    return;
-  }
+    mCurrentSteering = mLateralController.calculateSteering(carPose.getPose());
 
-  //check if framerate is down....
-  boost::posix_time::time_duration frameDiff = boost::posix_time::microsec_clock::local_time() - mLastImageStamp;
-  if(frameDiff.total_milliseconds() > 500) {
-      //slow down if framerate is low
-      mLowFrameRate = true;
-      LOGGING_INFO( controlLogger, "Framerate is dropping... slow motion!" << endl );
-  }
-
-  mCurrentPose = carPose;
-  if( mDriving && mInitializedTrajectory )
-  {
-    mCurrentSteering = mLateralController.calculateSteering( mCurrentPose.getPose() );
-
-    // The car has a max steering angle of a little over mMaxSteering.
-    // Make sure this angle is never reached, to avoid annoying warnings:
-    if(mCurrentSteering >= mMaxSteering)
-    {
-      mCurrentSteering = mMaxSteering;
-    }
-    else if(mCurrentSteering <= -mMaxSteering)
-    {
-      mCurrentSteering = -mMaxSteering;
-    }
-
-    if(mTrajectory.size() > 2){
-
-      // calculate speed according to trajectory
-      float recommendedTrajectorySpeed;
-      unsigned int curTrajIndex = mLateralController.getIndexOfProjectedPose();
-
-      if(curTrajIndex < mTrajectory.size()-1){
-
-        double speed1 = mTrajectory[curTrajIndex].getVelocity();
-        double speed2 = mTrajectory[curTrajIndex+1].getVelocity();
-        double ratio = mLateralController.getRatioToNextPoint();
-
-        recommendedTrajectorySpeed = (1.0-ratio) * speed1 + ratio*speed2;
-      }
-      else{
-        recommendedTrajectorySpeed = mTrajectory.back().getVelocity();
-      }
-
-      // calculate speed according to steering angle
-      float recommendedSteeringSpeed = FLT_MAX;
-      float absCurrentSteering = std::abs(mCurrentSteering);
-
-      // if steering angle is big enough, calculate speed according to steering angle
-      if(absCurrentSteering > mMinSteering /*&& !oadrive::util::Broker::isActive()*/) {
-        recommendedSteeringSpeed = (mMaxSteering - absCurrentSteering) * mRatioMinMaxSteeringSpeedToMinMaxSteering + mMinSteeringSpeed;
-      }
-
-      // actual driving speed is the minimum of trajectory and steering speed
-      mCurrentSpeed = std::min(recommendedTrajectorySpeed, recommendedSteeringSpeed);
-      if(mLowFrameRate) {
-        mCurrentSpeed = std::min(0.16f, mCurrentSpeed);
-        std::cout << "WARNING: FRAME RATE IS VERY LOW! (Bad Camera Update rate?)" << std::endl;
-      }
-
-      // error check for NaN speed
-      if(mCurrentSpeed != mCurrentSpeed){
-        mCurrentSpeed = mTargetSpeed;
-      }
-
-      if(!mTrajectory.isForwardTrajectory())
-      {
-        mCurrentSpeed = -mCurrentSpeed;
-      }
-
-      LOGGING_INFO( controlLogger, "[DriverModule] New speed: " << mCurrentSpeed << endl );
-
-    }
-
-    if(mLateralController.hasReached())
+    // check if traj has finished
+    if (mLateralController.hasReached())
     {
       mInitializedTrajectory = false;
       // If we're driving a multi trajectory and still have more trajectories to go:
-      if( mMultiTrajectory.trajectories.size() > mCurrentTrajectoryIndex + 1 )
+      if(mMultiTrajectory.trajectories.size() > mCurrentTrajectoryIndex + 1)
       {
         mCurrentTrajectoryIndex ++;
-        setTrajectory( mMultiTrajectory.trajectories[mCurrentTrajectoryIndex] );
-      } else {
+        setTrajectory(mMultiTrajectory.trajectories[mCurrentTrajectoryIndex]);
+      } 
+      else 
+      {
         // Otherwise let the mission control know we're done.
-        LOGGING_INFO( controlLogger, "[DriverModule] Reached end of trajectory." << endl);
+        LOGGING_INFO(controlLogger, "[DriverModule] Reached end of trajectory." << endl);
         mTrajectoryEndReached = true;
+#if ACTIVE_BRAKING
+        // Uncomment if you want to brake after trajectory was reached
+        mBraking = true;
+#endif
       }
     }
   }
-  else
-  {
-    LOGGING_INFO( controlLogger, "[DriverModule] NOT DRIVING !!!!" << endl);
-    mCurrentSpeed = 0;
+
+  mTargetSpeed = mDriving ? calculateTargetSpeed(carPose) : 0.0;
+}
+
+float DriverModule::calculateTargetSpeed(const ExtendedPose2d &carPose) 
+{
+  if(mBraking) {
+    // TODO mCurrentDirection * carPose.getVelocity() <= 0.0f ||  would improve it
+    if(fabs(carPose.getVelocity()) < 0.05f) {
+      mBraking = false;
+    }
+
+    return 0.0;
+  } else {
+    // calculate desired speed: Call calculate speed or follow car
+    if(mCarFollowing)
+    {
+      return calculateFollowCarSpeed(carPose);
+    }
+    else if (mInitializedTrajectory)
+    {
+      return calculateTrajectorySpeed();
+    }
   }
-  mtx.unlock();
+
+  return 0.0;
+}
+
+float DriverModule::calculateTrajectorySpeed()
+{
+  // calculate recommended speed given by trajectory
+  // float recommendedTrajectorySpeed = FLT_MAX;
+  // if(mTrajectory.velocityAvailable())
+  // {
+  //   unsigned int currentTrajIndex = mLateralController.getIndexOfProjectedPose();
+  //   if(currentTrajIndex < mTrajectory.size()-1)
+  //   {
+  //     double speed1 = mTrajectory[currentTrajIndex].getVelocity();
+  //     double speed2 = mTrajectory[currentTrajIndex+1].getVelocity();
+  //     double ratio = mLateralController.getRatioToNextPoint();
+  //     recommendedTrajectorySpeed = (1.0-ratio) * speed1 + ratio*speed2;
+  //   }
+  //   else
+  //   {
+  //     recommendedTrajectorySpeed = mTrajectory.back().getVelocity();
+  //   }
+  // }
+
+  // // calculate the recommended speed if the steering angle exceeds mMinSteeringToCap
+  // float recommendedCurveSpeed = FLT_MAX;
+  // if(std::abs(mCurrentSteering) > mMinSteeringToCap)
+  // {
+  //   recommendedCurveSpeed = (mMaxSteering - std::abs(mCurrentSteering)) * mRatioMinMaxSteeringSpeedToMinMaxSteering + mMinSteeringSpeed;
+  // }
+
+  // // final speed value is the minimum of the three recommended speed values
+  // float recommendedSpeed =  std::min(std::min(recommendedTrajectorySpeed, recommendedCurveSpeed), mMaxSpeed);
+
+  float recommendedSpeed = mMaxSpeed;
+  // invert speed if we drive backwards
+  if(!mTrajectory.isForwardTrajectory())
+  {
+    recommendedSpeed = -recommendedSpeed;
+  }
+  return recommendedSpeed;
+}
+
+float DriverModule::calculateFollowCarSpeed(const ExtendedPose2d &egoCarPose)
+{
+  const ExtendedPose2d &trackedCarPose = mTrackedCar.object.pose;
+  const ExtendedPose2d &trackedCarSpeed = mTrackedCar.speed;
+
+  // Pre controll
+  float absTrackedCarSpeed = sqrt(trackedCarSpeed.getX()*trackedCarSpeed.getX()
+                                  +trackedCarSpeed.getY()*trackedCarSpeed.getY());
+  // P controller
+  float dx = trackedCarPose.getX() - egoCarPose.getX();
+  float dy = trackedCarPose.getY() - egoCarPose.getY();
+  float distanceBetweenCars = sqrt(dx*dx+dy*dy);
+  float recommendedSpeed = absTrackedCarSpeed + mCarFollowingP * (distanceBetweenCars - mCarFollowingDistance);
+
+  //security check / speed cap
+  if(recommendedSpeed > mCarFollowingMaxSpeed)
+      recommendedSpeed = mCarFollowingMaxSpeed;
+  if(recommendedSpeed < 0)
+      recommendedSpeed = 0;
+  std::cout<< "Car following: " << recommendedSpeed << std::endl;
+  return recommendedSpeed;
 }
 
 float DriverModule::getSteeringAngle() const
 {
-  boost::lock_guard<boost::mutex> lock(mtx);
   return mCurrentSteering;
 }
 
 float DriverModule::getSpeed() const
 {
-  float tmp;
-  if(mtx.try_lock() == false)
-  {
-    LOGGING_ERROR( controlLogger, "Locking failed @ DriverModule::getSpeed " << endl );
-    return 0.0;
-  }
-  LOGGING_INFO( controlLogger, "[DriverModule] New target speed: " << mCurrentSpeed << endl );
-  tmp = mCurrentSpeed;
-
-  mtx.unlock();
-  return tmp;
+  return mTargetSpeed;
 }
 
-void DriverModule::setTargetSpeed(float speed)
+void DriverModule::setMaxSpeed(float speed)
 {
-  mtx.lock();
-  LOGGING_INFO( controlLogger, "[DriverModule] New target speed: "
-      << speed << endl );
-  mTargetSpeed = speed;
-  mtx.unlock();
+  mMaxSpeed = speed;
 }
 
-float DriverModule::getTargetSpeed()
+void DriverModule::enableCarFollowing(oadrive::obstacle::TrackedCar trackedCar)
 {
-  float speed;
-  mtx.lock();
-  speed = mTargetSpeed;
-  mtx.unlock();
-  return speed;
+  mCarFollowing = true;
+  mBraking = false;
+  mTrackedCar = trackedCar;
 }
 
-ExtendedPose2d DriverModule::getCarPose()
+void DriverModule::disableCarFollowing()
 {
-  ExtendedPose2d tmp;
-  mtx.lock();
-  tmp = mCurrentPose;
-
-  boost::posix_time::time_duration frameDiff = boost::posix_time::microsec_clock::local_time() - mLastImageStamp;
-  mLastImageStamp = boost::posix_time::microsec_clock::local_time();
-
-  if(mLowFrameRate && frameDiff.total_milliseconds() < 300)
-  {
-      //Framerate is ok again
-      mLowFrameRate = false;
-
-      LOGGING_INFO( controlLogger, "Framerate is good again!" << endl );
-  }
-  mtx.unlock();
-  return tmp;
+  mCarFollowing = false;
 }
 
 bool DriverModule::checkEndOfTrajectoryFlag()
 {
-  bool val = false;
-  mtx.lock();
-  // Check if the end was reached:
-  val = mTrajectoryEndReached;
-
-  // Reset so that we don't get the event twice!
-  mTrajectoryEndReached = false;
-
-  mtx.unlock();
-  return val;
+  return mTrajectoryEndReached;
 }
 
 size_t DriverModule::getCurrentTrajectoryIndex()
 {
-  size_t index;
-  mtx.lock();
-  index = mCurrentTrajectoryIndex;
-  mtx.unlock();
-  return index;
+  return mCurrentTrajectoryIndex;
+}
+
+size_t DriverModule::getNumberOfRemainingTrajectoryPoints()
+{
+  return mTrajectory.size() - mLateralController.getIndexOfProjectedPose();
+  // return mTrajetocry.size()
+  // return mLateralController.getIndexOfProjectedPose()
+}
+
+size_t DriverModule::getNumberOfRemainingTrajectories()
+{
+  return mMultiTrajectory.trajectories.size() - mCurrentTrajectoryIndex;
 }
 
 ///////////////////////////////////////////////////////////////
-// Private functions (not mutex locked)
-
-bool DriverModule::setTrajectory( const Trajectory2d& traj )
+// Private functions
+bool DriverModule::setTrajectory(const Trajectory2d& traj)
 {
-  if( traj.size() >= mLateralController.getMinTrajPoints() )
+  if(traj.size() >= mLateralController.getMinTrajPoints())
   {
     mTrajectory = traj;
     // Calculate directions from one pose to the next:
@@ -313,54 +284,21 @@ bool DriverModule::setTrajectory( const Trajectory2d& traj )
     // Calculate the radii of the circles at every trajectory pose:
     mTrajectory.calculateCurvature();
 
-    mLateralController.setTrajectory( mTrajectory );
+    mLateralController.setTrajectory(mTrajectory);
 
     mInitializedTrajectory = true;
-
-    LOGGING_INFO( controlLogger, "[DriverModule] Trajectory received: " << endl
+/*
+    LOGGING_INFO(controlLogger, "[DriverModule] Trajectory received: " << endl
         << "\t is Forward " << (mTrajectory.isForwardTrajectory())
-        << endl );
-
-    // Update again to see if we've reached the end of this trajectory:
-    mLateralController.calculateSteering( mCurrentPose.getPose() );
-
-    // Check if this trajectory is drivable:
-    if(mLateralController.hasReached())
-    {
-      mInitializedTrajectory = false;   // Stops driving
-      // If we're driving a multi trajectory and still have more trajectories to go:
-      if( mMultiTrajectory.trajectories.size() > mCurrentTrajectoryIndex + 1 )
-      {
-        mCurrentTrajectoryIndex ++;
-        //does yet not make totally sense, since we only check the first trajectory at first and only if it has reached it's end, we check the next one (and we dont check whether we are at the end of the last trajectory in the multi trajectory)
-        mInitializedTrajectory = setTrajectory(
-            mMultiTrajectory.trajectories[mCurrentTrajectoryIndex] );
-      } else {
-        // Otherwise let the mission control know we're done.
-        LOGGING_INFO( controlLogger, "[DriverModule] Reached end of trajectory." << endl);
-        mTrajectoryEndReached = true;
-        }
-    }
+        << endl);
+*/
   } else {
-    LOGGING_WARNING( controlLogger, "[DriverModule] WARNING: Trajectory has less than " << 
-        mLateralController.getMinTrajPoints() << " points. Halting." << endl );
+    LOGGING_WARNING(controlLogger, "[DriverModule] WARNING: Trajectory has less than " << 
+        mLateralController.getMinTrajPoints() << " points. Halting." << endl);
     mInitializedTrajectory = false;
     mTrajectoryEndReached = true;
   }
   return mInitializedTrajectory;
 }
-
-void DriverModule::privateHalt()
-{
-  LOGGING_INFO( controlLogger, "[DriverModule] Halting." << endl );
-  mDriving = false;
-  mCurrentSpeed = 0;
-}
-void DriverModule::privateDrive()
-{
-  LOGGING_INFO( controlLogger, "[DriverModule] Driving." << endl );
-  mDriving = true;
-}
-
 }	// namespace
 }	// namespace

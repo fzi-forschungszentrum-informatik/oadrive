@@ -1,4 +1,8 @@
 # this is for emacs file handling -*- mode: cmake; indent-tabs-mode: nil -*-
+set (CMAKE_CXX_STANDARD 11)
+
+# Make sure oadrive shared libraries can be easily found on macOS systems.
+set(CMAKE_MACOSX_RPATH 1)
 
 # Include icmaker if not already available.
 #
@@ -31,13 +35,9 @@ ICMAKER_REGISTER_PACKAGE(oadrive)
 ADD_SUBDIRECTORY(src/oadrive_core)
 ADD_SUBDIRECTORY(src/oadrive_util)
 ADD_SUBDIRECTORY(src/oadrive_control)
-#ADD_SUBDIRECTORY(src/oadrive_trajectory)
 ADD_SUBDIRECTORY(src/oadrive_world)
 ADD_SUBDIRECTORY(src/oadrive_lanedetection)
-ADD_SUBDIRECTORY(src/oadrive_missioncontrol)
 ADD_SUBDIRECTORY(src/oadrive_obstacle)
-ADD_SUBDIRECTORY(src/oadrive_trafficsign)
-ADD_SUBDIRECTORY(src/oadrive_interface)
 
 ICMAKER_CONFIGURE_PACKAGE()
 
@@ -48,5 +48,5 @@ ENDIF(BUILD_TESTS)
 
 # This directory is only included if ROS is available. Prevents us from
 # spaming from several ROS-dependent targets.
-ICMAKER_ADD_ROS_SUBDIRECTORY(src/ros)
+#ICMAKER_ADD_ROS_SUBDIRECTORY(src/ros)
 

@@ -1,0 +1,7 @@
+%YAML:1.0
+---
+
+X_measurementCovariance_ego: 0.5
+Y_measurementCovariance_ego: 0.5
+WidthMeasurementCovariance: 0.0001
+

@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -14,6 +14,9 @@
  *
  * \author  Micha Pfeiffer <ueczz@student.kit.edu>
  * \date    2016-02-22
+ * 
+ * \author  Mark Hueneberg <hueneber@fzi.de>
+ * \date    2018
  *
  */
 //----------------------------------------------------------------------
@@ -245,10 +248,6 @@ cv::Mat Config::getMat( std::string category, std::string key )
     {
       std::vector<double> seq;
       fs[key.c_str()] >> seq;
-      for( size_t i = 0; i < seq.size(); i++ )
-      {
-        std::cout << i << ": " << seq[i] << std::endl;
-      }
       value = cv::Mat( seq, true );
     } else {
       cv::read( node, value );
@@ -349,5 +348,10 @@ std::string Config::getCarName()
   return mCarName;
 }
 
+std::string Config::getConfigPath()
+{
+  assert( mInitialized == true );
+  return mConfigFolder.string();
+}
 } // namespace
 } // namespace

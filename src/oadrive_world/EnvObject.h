@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -16,6 +16,9 @@
  * \author  Peter Zimmer <peter-zimmer@gmx.net>
  * \author  Micha Pfeiffer <ueczz@student.kit.edu>
  * \date    2015-11-24
+ * 
+ * \author  Simon Roesler <simon.roesler@student.kit.edu>
+ * \date    2018
  *
  */
 //----------------------------------------------------------------------
@@ -32,88 +35,131 @@
 
 #include <oadrive_core/ExtendedPose2d.h>
 
-namespace oadrive{
-namespace world{
+namespace oadrive
+{
+namespace world
+{
 
-enum EnvObjType { PATCH=1, OBSTACLE=2, EVENT=3 };    
+enum EnvObjType
+{
+  PATCH = 1, OBSTACLE = 2, EVENT = 3
+};
 
-class EventRegion;	// predefine so shared_ptr can use it
-typedef boost::shared_ptr<EventRegion> EventRegionPtr;		// define before class because it uses the PatchPtr
+class EventRegion;  // predefine so shared_ptr can use it
+typedef boost::shared_ptr<EventRegion> EventRegionPtr;    // define before class because it uses the PatchPtr
 typedef std::list<EventRegionPtr> EventRegionPtrList;
-class EnvObject;	// predefine so shared_ptr can use it
-typedef boost::shared_ptr<EnvObject> EnvObjectPtr;		// define before class because it uses the PatchPtr
+
+class EnvObject;  // predefine so shared_ptr can use it
+typedef boost::shared_ptr<EnvObject> EnvObjectPtr;    // define before class because it uses the PatchPtr
 typedef std::list<boost::shared_ptr<EnvObject> > EnvObjectPtrList;
 
-class EnvObject {
+class EnvObject
+{
 
 public:
-  EnvObject(const oadrive::core::ExtendedPose2d &mPose, double mWidth = 0, double mHeight = 0);
-  virtual ~EnvObject();
+  EnvObject(core::ExtendedPose2d mPose, double mWidth = 0, double length = 0);
 
-  oadrive::core::ExtendedPose2d getPose() const;
-  void setPose(const oadrive::core::ExtendedPose2d &mPose);
+  virtual ~EnvObject();
+  
+  void mergeFrom(const EnvObjectPtr obj);
+
+  uint64_t getId() const;
+
+  void setId(uint64_t id);
+
+  core::ExtendedPose2d getPose() const;
+
+  void setPose(const core::ExtendedPose2d &mPose);
+
+  core::ExtendedPose2d getVelocity() const;
+
+  void setVelocity(const core::ExtendedPose2d &velocity);
+
   double getProbability() const;
+
   void setProbability(double probability);
+
   double getLikelyhood() const;
+
   void setLikelyhood(double likelyhood);
+
   int getType() const;
+
   void setType(int mType);
 
-  double getX();
+  double getX() const;
+
   void setX(double x);
-  double getY();
+
+  double getY() const;
+
   void setY(double y);
-  double getYaw();
+
+  double getYaw() const;
+
   void setYaw(double yaw);
 
-  double getHeight() const;
+  double getLength() const;
+
   void setHeight(double mHeight);
+
   double getWidth() const;
+
   void setWidth(double mWidth);
 
   double getTime() const;
+
   void setTime(double mTime);
+
   void updateTime();
 
-  unsigned int getId() const;
+  double calcDistTo(EnvObjectPtr other) const;
 
-  double calcDistTo(EnvObjectPtr other);
-  double calcDistTo( const oadrive::core::ExtendedPose2d &mPose );
-  double calcDistTo(const core::Position2d &pos);
+  double calcDistTo(const core::ExtendedPose2d &mPose) const;
+
+  double calcDistTo(const core::Position2d &pos) const;
 
   double getTempDist();
-  void calcTempDist(const oadrive::core::ExtendedPose2d &pose);
+
+  void calcMinDistanceToRefPoints(const core::ExtendedPose2d &pose);
 
   bool contains(double x, double y);
-  double calcAngleOffset(EnvObject* otherObject);
-  double calcAngleOffset(const oadrive::core::ExtendedPose2d &mPose);
 
-  bool isPointInside( const oadrive::core::ExtendedPose2d &M );
+  double calcAngleOffset(EnvObject* otherObject);
+
+  double calcAngleOffset(const core::ExtendedPose2d &mPose);
+
+  bool isPointInside(const core::ExtendedPose2d &pose) const;
   //bool isPointInside( Eigen::Vector2d M );
   /*! Calculates the Corner Points of the patch and some scalar products..
    * These are used to find if a point is inside the rectangle or not.
    * \note MUST be called whenever the position or orientation of the patch changes! */
   void updateCorners();
 
-  unsigned int checkIntersections( const oadrive::core::Position2d &start, const oadrive::core::Position2d &end );
+  unsigned int
+  checkIntersections(const core::Position2d &start, const core::Position2d &end);
 
   /*! Convert local coordinates pos to global coordinates. */
-  oadrive::core::ExtendedPose2d toWorldCoords( const oadrive::core::ExtendedPose2d &pos );
+  oadrive::core::ExtendedPose2d toWorldCoords(const core::ExtendedPose2d &pos);
 
   oadrive::core::Position2d getCornerA();
+
   oadrive::core::Position2d getCornerB();
+
   oadrive::core::Position2d getCornerC();
+
   oadrive::core::Position2d getCornerD();
+
   bool checkOverlap(EnvObjectPtr other);
 
-
-  static unsigned int IDCounter;
-
   int getTimeSinceLastUpdate();
-  
-  void addEventRegion( EventRegionPtr evRegion );
+
+  void addEventRegion(EventRegionPtr evRegion);
+
   void clearEventRegions();
+
   EventRegionPtrList getEventRegions() { return mEventRegions; }
+
   void removeEventRegion(EventRegionPtr evRegion);
 
   /*! Convenience function for objects which only have one event region.
@@ -129,37 +175,39 @@ private:
 
   unsigned int mId;
 
-  oadrive::core::ExtendedPose2d mPose;
+  core::ExtendedPose2d mPose;
+  core::ExtendedPose2d mVelocity;
   double mProbability;
   double mLikelyhood;
   double mTime;
 
-  double mWidth, mHeight;
+  double mWidth, mlength;
   double mTempDist;
 
-  oadrive::core::Position2d mCornerA;
-  oadrive::core::Position2d mCornerB;
-  oadrive::core::Position2d mCornerC;
-  oadrive::core::Position2d mCornerD;
+  core::Position2d mCornerA;
+  core::Position2d mCornerB;
+  core::Position2d mCornerC;
+  core::Position2d mCornerD;
 
-  oadrive::core::Position2d mAB;
-  oadrive::core::Position2d mAD;
+  core::Position2d mAB;
+  core::Position2d mAD;
   float mAB_AB;
   float mAD_AD;
 
-  double crossProduct( const oadrive::core::Position2d &p1, const oadrive::core::Position2d &p2 );
+  double crossProduct(const core::Position2d &p1, const core::Position2d &p2);
 
-  bool lineSegmentIntersection( const oadrive::core::Position2d &p,
-                                const oadrive::core::Position2d &q,
-                                const oadrive::core::Position2d &r,
-                                const oadrive::core::Position2d &s );
+  bool lineSegmentIntersection(const core::Position2d &p,
+                               const core::Position2d &q,
+                               const core::Position2d &r,
+                               const core::Position2d &s);
+
 public:
   // use a proper alignment when calling the constructor.
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 };
 
-}	// namespace
-}	// namespace
+}  // namespace
+}  // namespace
 
 #endif /* OADRIVE_WORLD_ENVOBJECT_H */

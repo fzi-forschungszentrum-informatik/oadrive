@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -18,8 +18,14 @@
  * \author  Christoph Rist <rist@fzi.de>
  * \date    2015-01-08
  *
+ * \author  Robin Andlauer <andlauer@fzi.de>
+ * \date    2017-06-20
  */
 //----------------------------------------------------------------------
+
+/*
+ - What to do if Traj point is too far away?
+*/
 #include "LateralController.h"
 
 #include <cmath>
@@ -33,43 +39,21 @@ using icl_core::logging::endl;
 namespace oadrive {
 namespace control {
 
-LateralController::LateralController():
-  m_BeforeAtan(1),
-  m_AfterAtan(1*1.3369),		//measuered
-  mKD(1.0),
-  SIGN_FCT_LIMIT(0.7),
+LateralController::LateralController(float maxSteering):
+  m_BeforeAtan((float)oadrive::util::Config::getDouble("precontrol","beforeAtan", 1.238)),
+  m_AfterAtan((float)oadrive::util::Config::getDouble("precontrol","AfterAtan", 1.095)),
+  m_OffsetAtan((float)oadrive::util::Config::getDouble("precontrol", "OffsetAtan", 0.02704)),
+  mKD((float)oadrive::util::Config::getDouble("Driver","KD",1.0)),
   WHEELBASE(0.36),
-  mWeightingDistance(2),
-  mMaxFunction(30),
+  mWeightingDistance((float)oadrive::util::Config::getDouble("Driver","WeightingDistance",2.0)),
+  mMaxFunction((float)oadrive::util::Config::getDouble("Driver","MaxFunction",30.0)),
   MIN_EXTENDED_POINTS_NEEDED_FOR_LATERAL_CONTROLLER(3),
   REACHED_ZONE_DISTANCE(0.35),
-  mVorsteuerungA(25.542),
-  mVorsteuerungB(1.089),
   STRAIGHT(Position2d(1.0, 0.0)),
-  m_distancePID(0),
-  m_reached(true),
-  m_KI(10),
-  m_ISumMax(2),
-  m_ITA(0.1),
-  m_PControl(200)
+  m_reached(false),
+  mMaxSteering(maxSteering)
 {
   m_trajectory.isForwardTrajectory() = true;
-  //Read config from config File. If the config file is not available it will take the default value
-
-  //Weighting the angle (If the angle of the traj and of the car doesn't fit, how strong should it steer?)
-  mKD = (float)oadrive::util::Config::getDouble("Driver","KD",1.0);
-  //Weighting distance. (If the car is not on the traj. how strong should it steering back)
-  //don't make this value to high (stability!)
-  mWeightingDistance = (float)oadrive::util::Config::getDouble("Driver","WeightingDistance",2.0);
-  mMaxFunction = (float)oadrive::util::Config::getDouble("Driver","MaxFunction",30.0);
-  //Precontrol. Measure 3 or 4 circles an make a leastsquare aproximation steeringValue = 1/r*A+B
-  //This is very important for this controller
-  mVorsteuerungA = (float)oadrive::util::Config::getDouble("Driver","VorsteuerungA",25.542);
-  mVorsteuerungB = (float)oadrive::util::Config::getDouble("Driver","VorsteuerungB",1.089);
-  m_BeforeAtan = (float)oadrive::util::Config::getDouble("precontrol","beforeAtan", 1.238);
-  m_AfterAtan = (float)oadrive::util::Config::getDouble("precontrol","AfterAtan", 1.095);
-  m_OffsetAtan = (float)oadrive::util::Config::getDouble("precontrol", "OffsetAtan", 0.02704);
-  std::cout<<"Vorsteuerung: "<<mVorsteuerungA<<std::endl;
 }
 
 float LateralController::calculateSteering(const Pose2d &vehicle_pose)
@@ -87,6 +71,17 @@ float LateralController::calculateSteering(const Pose2d &vehicle_pose)
     curvature = m_projected.getCurvature();
   }
   Controller(PoseTraits<Pose2d>::yaw(vehicle_pose), m_projected.getYaw(), curvature, m_distance);
+
+  // The car has a max steering angle of a little over mMaxSteering.
+  // Make sure this angle is never reached, to avoid annoying warnings:
+  if(m_delta >= mMaxSteering)
+  {
+    return mMaxSteering;
+  }
+  else if(m_delta <= -mMaxSteering)
+  {
+    return -mMaxSteering;
+  }
 
   return m_delta;
 }
@@ -245,8 +240,6 @@ bool LateralController::calculateProjection(const Trajectory2d& trajectory, cons
 
   }
 
-
-
   //Sign of distance
   Eigen::Matrix<double, 2, 2> m;
   m.col(0) <<vector_ab;
@@ -259,20 +252,7 @@ bool LateralController::calculateProjection(const Trajectory2d& trajectory, cons
   return shortest_distance_found_before_first_point;
 }
 
-void LateralController::controlDistance()
-{
-  m_ISum += m_distance;
-  //look if mISum is to high
-  if(m_ISum > m_ISumMax)
-    m_ISum = m_ISumMax;
-  else if(m_ISum < -m_ISumMax)
-    m_ISum = -m_ISumMax;
-  //PI Control
-  //LOGGING_INFO(latLogger," m_Distance: "<<m_distance<<endl);
-  m_distancePID = m_distance*m_PControl + m_KI*m_ITA*m_ISum;
-}
-
-void LateralController::Controller(double psiArg, double thetaArg, double kappaArg, double distanceArg)
+void LateralController::Controller(const double &psiArg, const double &thetaArg, const double &kappaArg, const double &distanceArg)
 {
   float vorsteuerung;
   // Vorsteuerung
@@ -280,12 +260,10 @@ void LateralController::Controller(double psiArg, double thetaArg, double kappaA
   {
     //kappaArg is NAN that is very evil
     vorsteuerung = 0;
-    //LOGGING_ERROR(latLogger,"KappaArg is NAN. Can't use feedforward control."<<endl);
+    LOGGING_ERROR(latLogger,"KappaArg is NAN. Can't use feedforward control."<<endl);
   }
   else
   {
-    //
-//    vorsteuerung = -kappaArg*mVorsteuerungA+mVorsteuerungB;
     vorsteuerung = (float)-(((m_AfterAtan * atan(m_BeforeAtan*WHEELBASE*kappaArg) + m_OffsetAtan)*180)/M_PI);
   }
 
@@ -297,7 +275,6 @@ void LateralController::Controller(double psiArg, double thetaArg, double kappaA
   // Distanz
   float distFinal    = -/*AdaptRefPointFuction(velocityArg) * */ mWeightingDistance * SignedFunction(distanceArg);
   //  float distFinal = -m_distancePID;
-
   
   m_delta = vorsteuerung + angleFinal + distFinal;
   //LOGGING_INFO(latLogger,"[Controller] Vorsteuerung: "<<vorsteuerung<<" Angle Final: "<<angleFinal<<" distFinal: "<<distFinal<<"distance: "<<distanceArg<<"m_delta"<<m_delta<<endl);
@@ -319,13 +296,12 @@ float LateralController::NormalizeAngle(float angleArg)
 }
 
 
-float LateralController::SignedFunction(float numArg)
+float LateralController::SignedFunction(const float &numArg)
 {
 //  signed_distance = std::min(signed_distance, p_signed_distance_max);
 //  signed_distance = std::max(signed_distance, p_signed_distance_min);
 
   float res = numArg;
-//  float res = numArg/SIGN_FCT_LIMIT*mMaxFunction;
   if (res > mMaxFunction)
     res = mMaxFunction;
   else if (res < -mMaxFunction)
@@ -345,23 +321,5 @@ void LateralController::checkReachedPoints()
     }
   }
 }
-
-/*float LateralController::AdaptRefPointFuction(float numArg)
-{
-
-//TODO for calibration
-return 1;
-//return numArg;
-  float res = numArg;
-  if(abs (numArg) > REF_POINT_2){
-    res = 0;
-  }
-  if((abs (numArg) > REF_POINT_1) && (abs(numArg) < REF_POINT_2)){
-    res = (1-((abs(numArg)-REF_POINT_1)/(REF_POINT_2-REF_POINT_1))) * abs(numArg);
-  }
-  if(abs(numArg) < REF_POINT_1) res = 1;
-    return res;
-}*/
-
 }
 }// ns

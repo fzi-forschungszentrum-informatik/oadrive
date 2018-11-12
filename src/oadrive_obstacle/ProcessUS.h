@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -74,12 +74,12 @@ public:
     \param sensorNumber Number of the sensor start at 0 at the left of the frontbumber. Count clockwise
     \return position of the objekt in Car Grid
     */
-  oadrive::core::ExtendedPose2d transformToCar(int sensorNumber, double distance);
+  core::ExtendedPose2d transformToCar(int sensorNumber, double distance);
 
   //! \brief getObjects transforms every US sensor in one object
   //! \param sensor struct with all distances in m
   //! \return boost shared Pointer to vector with Extended Poses
-  oadrive::core::ExtendedPose2dVectorPtr getObjects(usSensor sensor);
+  core::ExtendedPose2dVectorPtr getObjects(usSensor sensor);
 
   /*!
    * \brief printCalPoints Print Cal Points to console

@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -88,7 +88,8 @@ void Timer::checkTimers()
       // If the timer should not be deleted and its time has passed, fire the event.
 //      LOGGING_INFO( utilLogger, "Firing timer of type " << timerIt->type << endl );
 
-      for( TimerEventListenerPtrList::iterator listenerIt = mListeners.begin(); listenerIt != mListeners.end(); listenerIt++ )
+      std::list<TimerEventListener*>::iterator listenerIt;
+      for( listenerIt = mListeners.begin(); listenerIt != mListeners.end(); listenerIt++ )
       {
         // Notify the listeners:
         (*listenerIt)->eventTimerFired( timerIt->type, timerIt->uniqueTimerID );
@@ -101,13 +102,13 @@ void Timer::checkTimers()
   }
 }
 
-void Timer::addListener( TimerEventListenerPtr listener )
+void Timer::addListener( TimerEventListener* listener )
 {
 //  LOGGING_INFO( utilLogger, "New timer event listener registered." << endl );
   mListeners.push_back( listener );
 }
 
-void Timer::removeListener( TimerEventListenerPtr listener )
+void Timer::removeListener( TimerEventListener* listener )
 {
   mListeners.remove( listener );
 }

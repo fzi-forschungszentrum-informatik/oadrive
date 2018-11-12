@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -46,7 +46,7 @@ public:
   //! \brief getObjects starting point of the depth image processing
   //! \param image Depth image
   //! \return Objects in Car? cords
-  ExtendedPose2dVectorPtr getObjects(cv::Mat image);
+  core::ExtendedPose2dVectorPtr getObjects(cv::Mat image);
 
   /*!
      * \brief setRef set refernce Image

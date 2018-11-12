@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -15,6 +15,12 @@
  * \author  David Zimmerer <dzimmerer@gmail.com>
  * \author  Micha Pfeiffer <ueczz@student.kit.edu>
  * \date    2016-01-17
+ * 
+ * \author  Simon Roesler <simon.roesler@student.kit.edu>
+ * \date    2018
+ * 
+ * \author  Mark Hueneberg <hueneber@fzi.de>
+ * \date    2018
  *
  */
 //----------------------------------------------------------------------
@@ -36,9 +42,9 @@ const float CROSS_SECTION_CENTER_OFFSET = 0.4*2.0;
 const float UNCONNECTED_TRAFFIC_SIGN_REGION_SIZE = 2.8;
 const float UNCONNECTED_TRAFFIC_SIGN_OFFSET = UNCONNECTED_TRAFFIC_SIGN_REGION_SIZE*0.5 - 0.1;
 
-enum EventRegionType { CROSS_SECTION_HALT, CROSS_SECTION_BLINK, CROSS_SECTION_CENTER, PARKING_SIGN,
+enum EventRegionType { CROSS_SECTION_REGION, CROSS_SECTION_HALT, CROSS_SECTION_BLINK, CROSS_SECTION_CENTER, PARKING_SIGN,
                        PARKING_PARALLEL, OBSTACLE_REGION, OBSTACLE_REGION_SMALL, OBSTACLE_PASSED_REGION, OVERTAKE_FINISHED_REGION , PARKING_CROSS, CROSS_SECTION_OBSTACLES,
-                       UNCONNECTED_TRAFFIC_SIGN, PED_CROSSING_HALT, PED_CROSSING_FREE_REGION };
+                       UNCONNECTED_TRAFFIC_SIGN, PED_CROSSING_HALT, PED_CROSSING_FREE_REGION, PARKING_SPACE_REGION };
 enum EventType { EVENT_ENTERED_REGION, EVENT_EXITED_REGION };
 
 class EventRegion;	// predefine so shared_ptr can use it
@@ -48,41 +54,29 @@ typedef std::list<boost::shared_ptr<EventRegion> > EventRegionPtrList;
 class EventRegion : public EnvObject
 {
 public:
-  EventRegion( EventRegionType mType, const oadrive::core::ExtendedPose2d &mPose,
-               float mWidth, float mHeight );
+  EventRegion( EventRegionType mType, const oadrive::core::Pose2d &mPose, const oadrive::core::Pose2d &mParkingTakeoff,
+               float mWidth, float mHeight, bool oneTime = false );
   ~EventRegion();
 
-  EnvObjectPtr getObjectOfInterest() { return mObjectOfInterest; }
-  void setObjectOfInterest( EnvObjectPtr object ) { mObjectOfInterest = object; }
+  oadrive::core::Pose2d getLocalPose() const { return mLocalPose; }
 
-  bool getIsCarInside() { return mIsCarInside; }
-  void setIsCarInside( bool isInside ) { mIsCarInside = isInside; }
+  oadrive::core::Pose2d getParkingTakeoff() const { return mParkingTakeoff; }
 
-  EventRegionType getEventRegionType() { return mEventRegionType; }
+  EventRegionType getEventRegionType() const { return mEventRegionType; }
 
-  oadrive::core::ExtendedPose2d getLocalPose() { return mLocalPose; }
+  bool getOneTime() const;
 
-    bool isToDelete() const {
-    return mToDelete;
-    }
-
-    void setToDelete(bool toDelete) {
-    EventRegion::mToDelete = toDelete;
-    }
+  void update(EventRegion& region);
 
 private:
 
-  EnvObjectPtr mObjectOfInterest;
+  EventRegionType  mEventRegionType;
 
-  EventRegionType mEventRegionType;
+  oadrive::core::Pose2d mLocalPose;
+  oadrive::core::Pose2d mParkingTakeoff;
 
-  bool mIsCarInside;
+  bool mOneTime = false;
 
-
-private:
-    bool mToDelete;
-
-  oadrive::core::ExtendedPose2d mLocalPose;
 public:
   // use a proper alignment when calling the constructor.
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW

@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -18,6 +18,8 @@
  * \author  Christoph Rist <rist@fzi.de>
  * \date    2015-01-08
  *
+ * \author  Robin Andlauer <andlauer@fzi.de>
+ * \date    2017-06-20
  */
 //----------------------------------------------------------------------
 
@@ -64,7 +66,7 @@ public:
   typedef double _position_type;
 
   //! Constructor
-  LateralController();
+  LateralController(float maxSteering);
 
   //! Destructor
   virtual ~LateralController()    {}
@@ -115,12 +117,21 @@ private:
 
   void updatePosAndCheckForReached(const oadrive::core::Pose2d &vehicle_pose);
 
-  void Controller(double psiArg, double thetaArg, double kappaArg, double distanceArg);
+  //!
+  //! \brief Controller Calculates/controls steering angle to stay on trajectory.
+  //! The P-controller calculates the angle by the sum of a precontrol, a weighted angle difference and a weighted distance.
+  //! \param psiArg car orientation angle
+  //! \param thetaArg orientation angle of the point on the trajectory that is closest to the car (car position projected on the trajectory)
+  //! \param kappaArg curvature of the trajectory
+  //! \param distanceArg distance between car and projected traj point
+  //!
+  void Controller(const double &psiArg, const double &thetaArg, const double &kappaArg, const double &distanceArg);
 
-  float SignedFunction(float numArg);
+  //! Currently only caps the given input value (here: distance car<->traj)
+  float SignedFunction(const float &numArg);
 
   //float AdaptRefPointFuction(float numArg);
-
+  //! normalizes angle if it exceeds abs(pi)
   float NormalizeAngle(float angleArg);
 
   //! Current index of current pose on trajectory
@@ -129,42 +140,39 @@ private:
   //! Current trajectory
   oadrive::core::Trajectory2d m_trajectory;
 
-  //! Current vehicle pose projected onto m_trajectory
+  //! Current vehicle pose projected onto the traj
   oadrive::core::ExtendedPose2d m_projected;
 
-  //!  properties
+  //! precontrol parameters
   float m_BeforeAtan;
   float m_AfterAtan;
   float m_OffsetAtan;
+  //! Weighting the angle (If the angle of the traj and of the car doesn't fit, how strong should it steer?)
   float mKD;
-  const float SIGN_FCT_LIMIT;
+  //! distance front wheel to back wheel in m
   const float WHEELBASE;
+  //! Weighting distance. (If the car is not on the traj. how strong should it steering back)
+  //! don't make this value to high (stability!)
   float mWeightingDistance;
+  //! distance cap: if the car is too far away from the traj the distance weighting should be capped so the car does not steer back with 90° to the traj orientation
+  //! (after traj is reached staying on the traj would be almost impossible if the car stands perpendicular to it)
   float mMaxFunction;
   const size_t MIN_EXTENDED_POINTS_NEEDED_FOR_LATERAL_CONTROLLER;
   const float REACHED_ZONE_DISTANCE;
-  //steering angle = a*(1/radius)+b this values must be measured. (drive with differnt steering angles and measure the radius)
-  float mVorsteuerungA;
-  float mVorsteuerungB;
 
   //!
   const oadrive::core::Position2d STRAIGHT;
 
   float m_delta;
   float m_direction;
+  // current distance between car and projected traj point
   double m_distance;
-  double m_distancePID;
-
+  // ratio between 2 traj points where the projected traj point lies
   double m_ratio;
 
   bool m_reached;
 
-  //store PI
-  double m_KI;
-  double m_ISum;
-  const double m_ISumMax;
-  const double m_ITA;
-  const double m_PControl;
+  float mMaxSteering;
 
   //! Check for positions
   ReachedPositionArray m_reached_positions;

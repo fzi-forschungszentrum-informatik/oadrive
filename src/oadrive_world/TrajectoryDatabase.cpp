@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -15,6 +15,9 @@
  * \author  David Zimmerer <dzimmerer@gmail.com>
  * \author  Micha Pfeiffer <ueczz@student.kit.edu>
  * \date    2016-02-06
+ * 
+ * \author  Mark Hueneberg <hueneber@fzi.de>
+ * \date    2018
  *
  */
 //----------------------------------------------------------------------
@@ -122,6 +125,7 @@ MultiTrajectory TrajectoryDatabase::getTrajectory( std::string name )
     msg.append( " does not exist in TrajectoryDatabase." );
     if( database.size() == 0 )
       msg.append( " Make sure to call TrajectoryDatabase::load first!" );
+    std::cout << msg << std::endl;
     throw( msg.c_str() );
   }
 }
@@ -138,6 +142,7 @@ Trajectory2d TrajectoryDatabase::getSingleTrajectory( std::string name )
     msg.append( " does not exist in TrajectoryDatabase." );
     if( database.size() == 0 )
       msg.append( " Make sure to call TrajectoryDatabase::load first!" );
+    std::cout << msg << std::endl;
     throw( msg.c_str() );
   }
 }

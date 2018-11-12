@@ -1,13 +1,36 @@
 %YAML:1.0
-#Weighting distance. (If the car is not on the traj. how strong should it steering back)
+#Weighting distance. (If the car is not on the traj. how strong should it steer back)
 #don't make this value to high (stability!)
-WeightingDistance: 300.0
+#WeightingDistance: 300.0
+# WeightingDistance: 200.0 # works well for qualifying!
+# WeightingDistance: 300.0 
+#WeightingDistance: 100.0
+# WeightingDistance: 150.0 # tested on alpacalypse
+WeightingDistance: 200.0 # tested on alpacalypse
+
+# MaxFunction: 0.2
+# MaxFunction: 0.3
+# MaxFunction: 0.083 
 MaxFunction: 0.083
 #Weighting the angle (If the angle of the traj and of the car doesn't fit, how strong should it steer?)
 KD: 2.0
-#Precontrol. Measure 3 or 4 circles an make a leastsquare aproximation steeringValue = 1/r*A+B
-#This is very important for this controller
-VorsteuerungA: 25.542
-VorsteuerungB: 1.089
+MaxSteering: 50
 
-MAX_STEERING_SPEED: 0.35
+# P-Regler: P = 3
+# PI-Regler: P = 2, I = 5
+Kp: 2.0
+Ki: 5.0
+
+MaxPI_Speed: 0.8
+MinSteeringToCap: 10
+MaxSteeringSpeed: 0.6
+MinSteeringSpeed: 0.4
+
+CarFollowingDistance: 1.2
+CarFollowingP: 0.2
+CarFollowingMaxSpeed: 0.5
+
+SlowSpeed: 0.5
+SlowParkSpeed: 0.3
+# NormalSpeed: 0.75 # from qualifying
+NormalSpeed: 0.75

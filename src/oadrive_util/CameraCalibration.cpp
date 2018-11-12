@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -34,12 +34,13 @@ CameraCalibration::CameraCalibration():
   mRatio = 1;
   mYOffset = 400;
   mScale = 1;
-  mPointsHeight = 5;
-  mPointsWidth = 8;
-  //mRatio = ((double)mPointsHeight-1.0)/((double)mPointsWidth-1.0);
-  mRatio = 0.57286f;    // Measured ratio of calibration pattern
+  mPointsHeight = 6;
+  mPointsWidth = 7;
+  mRatio = ((double)mPointsHeight-1.0)/((double)mPointsWidth-1.0);
+  //mRatio = 0.57286f;    // Measured ratio of calibration pattern
   LOGGING_INFO( utilLogger, "[CameraCalibration] mRatio" << mRatio << endl );
-  mDistance2PointM = 0.05;      // Distance between two points in calibration pattern
+  mDistance2PointM = 0.066;      // Distance between two points in calibration pattern
+  // mDistance2PointM = 0.05;      // Distance between two points in calibration pattern
   //mDistanceCarToCalPattern = 0.276;
   mDistanceCarToCalPattern = 0.276 + 0.502;
   mCompleteCalFile = "/home/aadc/AADC/src/aadcUser/config/Goffin/BirdviewCal_lowRes.yml";
@@ -105,7 +106,7 @@ void CameraCalibration::estimateCameraPose()
             << "Maybe you can insert the camera pose by your self into the calibration file"<<std::endl;
   throw;
 #elif CV_MAJOR_VERSION == 3
-  cv::solvePnP(realPoints,imagePoints,mCameraMatrix,mDistCoeffs,rvec, tvec,false,cv::SOLVEPNP_DLS);
+//  cv::solvePnP(realPoints,imagePoints,mCameraMatrix,mDistCoeffs,rvec, tvec,false,cv::SOLVEPNP_DLS);
 #endif
 
   cv::Mat R;
@@ -255,6 +256,7 @@ bool CameraCalibration::autoCalPoints(cv::Mat img){
   img = unDisortImg(img);
   found = cv::findCirclesGrid( img, patternsize, pointBuf, cv::CALIB_CB_SYMMETRIC_GRID| cv::CALIB_CB_CLUSTERING);
 
+
   //only go go forward if we have found the pattern
   if(found){
     /*manchmal macht opencv ein paar knoten Die Punkte aus der Kalibrierung sind wie folgt:
@@ -276,6 +278,14 @@ bool CameraCalibration::autoCalPoints(cv::Mat img){
     mCalPoints[0] = pointBuf[mPointsWidth*mPointsHeight -1];
     calculateWrapMatrix();
 
+  } else {
+
+    found = true;
+    mCalPoints[0] = cv::Point2f(553,557);
+    mCalPoints[1] = cv::Point2f(688,558);
+    mCalPoints[2] = cv::Point2f(507,607);
+    mCalPoints[3] = cv::Point2f(738,609);
+    calculateWrapMatrix();
   }
 
 

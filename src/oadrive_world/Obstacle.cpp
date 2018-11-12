@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -23,13 +23,13 @@
 #include "Obstacle.h"
 #include "EnvObject.h"
 
-
+using namespace oadrive::core;
 
 namespace oadrive{
 namespace world{
 
 
-Obstacle::Obstacle(const oadrive::core::ExtendedPose2d &pose, double width, double height, SensorType type)
+Obstacle::Obstacle(const ExtendedPose2d &pose, double width, double height, SensorType type)
   : EnvObject(pose,width,height)
   , mSensorType( type )
   , mKalmanFilter(2,2,0) //2 states (x,y) and 2 measurements (x,y)

@@ -1,4 +1,13 @@
-#include <oadrive_lanedetection/HaarFilter.h>
+// -- BEGIN LICENSE BLOCK ----------------------------------------------
+// This program is free software licensed under the CDDL
+// (COMMON DEVELOPMENT AND DISTRIBUTION LICENSE Version 1.0).
+// You can find a copy of this license in LICENSE in the top
+// directory of the source code.
+//
+// © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// -- END LICENSE BLOCK ------------------------------------------------
+
+#include <oadrive_lanedetection/FeatureDetection/HaarFilter.h>
 #include <opencv2/flann/timer.h>
 #include <oadrive_util/Config.h>
 #include <oadrive_util/BirdViewConverter.h>
@@ -17,12 +26,12 @@ int main(int argc, char** argv )
     cv::String folder = cv::String(argv[1]);
     cv::glob(folder, filenames);
  
-    std::string configFolder = argv[1];
+    std::string configFolder = argv[2];
     configFolder.append( "config" );
     std::string carName = "Goffin";
-    if( argc >= 3 )
+    if( argc >= 4 )
     {
-      carName = argv[2];
+      carName = argv[3];
     }
     
     std::string mConfigPath( Config::setConfigPath( configFolder, carName ) );
@@ -59,7 +68,7 @@ int main(int argc, char** argv )
       timer.stop();
       std::cout << "Time taken for image: " << timer.value << std::endl;
 
-      //cv::Mat result = filter.generateDebugImage();
+      //cv::Mat result = filter.generateFeatureDebugImage();
 
       cv::Mat channels[4];
       //cv::cvtColor( mLastBirdViewImage, output, CV_GRAY2BGR );

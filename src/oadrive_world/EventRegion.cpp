@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -15,6 +15,12 @@
  * \author  David Zimmerer <dzimmerer@gmail.com>
  * \author  Micha Pfeiffer <ueczz@student.kit.edu>
  * \date    2016-01-17
+ * 
+ * \author  Simon Roesler <simon.roesler@student.kit.edu>
+ * \date    2018
+ * 
+ * \author  Mark Hueneberg <hueneber@fzi.de>
+ * \date    2018
  *
  */
 //----------------------------------------------------------------------
@@ -25,20 +31,28 @@
 
 using namespace oadrive::core;
 
-namespace oadrive{
-namespace world{
+namespace oadrive {
+namespace world {
 
-EventRegion::EventRegion( EventRegionType type, const oadrive::core::ExtendedPose2d &pose,
-                          float width, float height )
-  : EnvObject( ExtendedPose2d( 0,0,0 ), width, height )
-  , mLocalPose( pose )
-{
+EventRegion::EventRegion(EventRegionType type,
+                         const oadrive::core::Pose2d &pose, const oadrive::core::Pose2d &parkingTakeoff, float width,
+                         float height, bool oneTime)
+    : EnvObject(ExtendedPose2d(pose), width, height), mParkingTakeoff(parkingTakeoff), mLocalPose(pose), mOneTime(oneTime) {
   mEventRegionType = type;
-  mIsCarInside = false;
-  mToDelete = false;
 }
 
-EventRegion::~EventRegion(){}
+EventRegion::~EventRegion() {}
 
-}	// namespace
-}	// namespace
+bool EventRegion::getOneTime() const {
+  return mOneTime;
+}
+
+
+void EventRegion::update(EventRegion& region) {
+  mEventRegionType = region.getEventRegionType();
+  mParkingTakeoff = region.getParkingTakeoff();
+  mLocalPose = region.getLocalPose();
+}
+
+}  // namespace world
+}  // namespace oadrive

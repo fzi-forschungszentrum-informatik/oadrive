@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -32,6 +32,7 @@ ProcessUS::ProcessUS():
   MAXDIST(0.8)
 ,MINDIST(0.08)
 {
+// Kacadu:
   for(int sensor=0;sensor<NUMBERSENSOR;sensor++)
   {
     for(int calPointNumber = 0; calPointNumber<NUMBERCALPOINTSPERSENSOR; calPointNumber++)
@@ -45,6 +46,7 @@ ProcessUS::ProcessUS():
     mUsSensorPos[sensor].distanceOffset = 0;
     mUsSensorPos[sensor].yOffset = 0;
   }
+
 
 }
 ProcessUS::ProcessUS(std::string calFile):
@@ -132,58 +134,60 @@ oadrive::core::ExtendedPose2d ProcessUS::transformToCar(int sensorNumber, double
 
   double x = std::sin(mUsSensorPos[sensorNumber].angle)*(distance+mUsSensorPos[sensorNumber].distanceOffset);
   double y = std::cos(mUsSensorPos[sensorNumber].angle)*(distance+mUsSensorPos[sensorNumber].distanceOffset)+mUsSensorPos[sensorNumber].yOffset;
-  oadrive::core::ExtendedPose2d postion(x,y,0);
+
+  // WARNING: SWAP x and y. Should be changed in the whole class!!!
+  oadrive::core::ExtendedPose2d postion(y,x,0);
 
   return postion;
 }
 
 oadrive::core::ExtendedPose2dVectorPtr ProcessUS::getObjects(usSensor sensor)
 {
-  usSensor* limits = Environment::getInstance()->getCurrentUSSensorLimits();
-
-  oadrive::core::ExtendedPose2dVectorPtr objectPoses(new oadrive::core::ExtendedPose2dVector());
-  if( sensor.frontLeft < limits->frontLeft && sensor.frontLeft>MINDIST)
-  {
-    objectPoses->push_back(transformToCar(0,sensor.frontLeft));
-  }
-  if( sensor.frontCenterLeft < limits->frontCenterLeft && sensor.frontCenterLeft > MINDIST )
-  {
-    objectPoses->push_back(transformToCar(1,sensor.frontCenterLeft));
-  }
-  if( sensor.frontCenter < limits->frontCenter && sensor.frontCenter > 0 )
-  {
-    objectPoses->push_back(transformToCar(2,sensor.frontCenter));
-  }
-  if( sensor.frontCenterRight < limits->frontCenterRight && sensor.frontCenterRight > MINDIST )
-  {
-    objectPoses->push_back(transformToCar(3,sensor.frontCenterRight));
-  }
-  if( sensor.frontRight < limits->frontRight && sensor.frontRight > MINDIST )
-  {
-    objectPoses->push_back(transformToCar(4,sensor.frontRight));
-  }
-  if( sensor.sideRight < limits->sideRight && sensor.sideRight > MINDIST )
-  {
-    objectPoses->push_back(transformToCar(5,sensor.sideRight));
-  }
-  if( sensor.rearRight < limits->rearRight && sensor.rearRight > MINDIST )
-  {
-    objectPoses->push_back(transformToCar(6,sensor.rearRight));
-  }
-  if( sensor.rearCenter < limits->rearCenter && sensor.rearCenter > MINDIST )
-  {
-    objectPoses->push_back(transformToCar(7,sensor.rearCenter));
-  }
-  if( sensor.rearLeft < limits->rearLeft && sensor.rearLeft > MINDIST )
-  {
-    objectPoses->push_back(transformToCar(8,sensor.rearLeft));
-  }
-  if( sensor.sideLeft < limits->sideLeft && sensor.sideLeft > MINDIST )
-  {
-    objectPoses->push_back(transformToCar(9,sensor.sideLeft));
-  }
-
-  return objectPoses;
+//  usSensor* limits = Environment::getInstance()->getCurrentUSSensorLimits();
+//
+//  oadrive::core::ExtendedPose2dVectorPtr objectPoses(new oadrive::core::ExtendedPose2dVector());
+//  if( sensor.frontLeft < limits->frontLeft && sensor.frontLeft>MINDIST)
+//  {
+//    objectPoses->push_back(transformToCar(0,sensor.frontLeft));
+//  }
+//  if( sensor.frontCenterLeft < limits->frontCenterLeft && sensor.frontCenterLeft > MINDIST )
+//  {
+//    objectPoses->push_back(transformToCar(1,sensor.frontCenterLeft));
+//  }
+//  if( sensor.frontCenter < limits->frontCenter && sensor.frontCenter > 0 )
+//  {
+//    objectPoses->push_back(transformToCar(2,sensor.frontCenter));
+//  }
+//  if( sensor.frontCenterRight < limits->frontCenterRight && sensor.frontCenterRight > MINDIST )
+//  {
+//    objectPoses->push_back(transformToCar(3,sensor.frontCenterRight));
+//  }
+//  if( sensor.frontRight < limits->frontRight && sensor.frontRight > MINDIST )
+//  {
+//    objectPoses->push_back(transformToCar(4,sensor.frontRight));
+//  }
+//  if( sensor.sideRight < limits->sideRight && sensor.sideRight > MINDIST )
+//  {
+//    objectPoses->push_back(transformToCar(5,sensor.sideRight));
+//  }
+//  if( sensor.rearRight < limits->rearRight && sensor.rearRight > MINDIST )
+//  {
+//    objectPoses->push_back(transformToCar(6,sensor.rearRight));
+//  }
+//  if( sensor.rearCenter < limits->rearCenter && sensor.rearCenter > MINDIST )
+//  {
+//    objectPoses->push_back(transformToCar(7,sensor.rearCenter));
+//  }
+//  if( sensor.rearLeft < limits->rearLeft && sensor.rearLeft > MINDIST )
+//  {
+//    objectPoses->push_back(transformToCar(8,sensor.rearLeft));
+//  }
+//  if( sensor.sideLeft < limits->sideLeft && sensor.sideLeft > MINDIST )
+//  {
+//    objectPoses->push_back(transformToCar(9,sensor.sideLeft));
+//  }
+//
+//  return objectPoses;
 
 }
 
@@ -234,15 +238,15 @@ void ProcessUS::calcSensorPos()
     else if(sensor == 5)
     {
       mUsSensorPos[sensor].yOffset = mCalPoints[sensor][0].y;
-      mUsSensorPos[sensor].distanceOffset = mCalPoints[sensor][0].x-mCalPoints[sensor][0].distance;
-      mUsSensorPos[sensor].angle = (M_PI)/2;
+      mUsSensorPos[sensor].distanceOffset = -mCalPoints[sensor][0].x-mCalPoints[sensor][0].distance;
+      mUsSensorPos[sensor].angle = -(M_PI)/2;
 
     }
     else if(sensor == 9)
     {
       mUsSensorPos[sensor].yOffset = mCalPoints[sensor][0].y;
-      mUsSensorPos[sensor].distanceOffset = -mCalPoints[sensor][0].x-mCalPoints[sensor][0].distance;
-      mUsSensorPos[sensor].angle = -(M_PI)/2;
+      mUsSensorPos[sensor].distanceOffset = mCalPoints[sensor][0].x-mCalPoints[sensor][0].distance;
+      mUsSensorPos[sensor].angle = (M_PI)/2;
     }
     else
     {
@@ -255,6 +259,8 @@ void ProcessUS::calcSensorPos()
       mUsSensorPos[sensor].angle = atan2(x0,(y0-mUsSensorPos[sensor].yOffset));
       double yHelp = y0-mUsSensorPos[sensor].yOffset;
       mUsSensorPos[sensor].distanceOffset = std::sqrt(x0*x0+(yHelp*yHelp))-d0;
+
+//      std::cout <<  mUsSensorPos[sensor].yOffset << " " <<  mUsSensorPos[sensor].angle << " " <<   mUsSensorPos[sensor].distanceOffset << " " << std::endl;
     }
 
   }
@@ -305,7 +311,7 @@ void ProcessUS::getValuesFromCons()
     std::cin>>next;
     if(next == 's')
     {
-      saveCal("/tmp/test/test.yml");
+      saveCal("/home/aadc2017/bagfiles/US.yml");
       std::cout<<"gespeichert"<<std::endl;
       break;
     }

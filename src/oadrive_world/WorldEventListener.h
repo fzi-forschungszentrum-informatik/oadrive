@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -31,9 +31,6 @@ class WorldEventListener{
 public:
   WorldEventListener() {};
   virtual ~WorldEventListener() {};
-  typedef boost::shared_ptr<WorldEventListener> Ptr;
-  typedef boost::shared_ptr<const WorldEventListener> ConstPtr;
-
 
   /*! Called when trajectory could be generated (i.e. patches were found). */
   virtual void eventReadyToGeneratePatchTrajectory() = 0;

@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -34,6 +34,9 @@
 #include <oadrive_obstacle/obstacleLogging.h>
 #include <oadrive_world/Environment.h>
 
+
+using namespace oadrive::core;
+using namespace oadrive::world;
 #define noPng //if you deactivate this you must pass a png file as input file
 using icl_core::logging::endl;
 using icl_core::logging::flush;
@@ -304,7 +307,7 @@ void ProcessDepth::generateDepthReferenceImage()
 
     if(depth < mMaxViewDepth && !maxDepthReached)
     {
-      mRefImage.row( i ) = cv::Scalar( (unsigned int)abs(depth*1000) );
+      mRefImage.row( i ) = cv::Scalar( (unsigned int)std::fabs(depth*1000) );
       mMaxDepthRow = i;
     }
     else

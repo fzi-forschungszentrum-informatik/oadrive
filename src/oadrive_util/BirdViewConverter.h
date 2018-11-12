@@ -6,7 +6,7 @@
 // You can find a copy of this license in LICENSE in the top
 // directory of the source code.
 //
-// © Copyright 2017 FZI Forschungszentrum Informatik, Karlsruhe, Germany
+// © Copyright 2018 FZI Forschungszentrum Informatik, Karlsruhe, Germany
 // -- END LICENSE BLOCK ------------------------------------------------
 
 //----------------------------------------------------------------------
@@ -14,7 +14,14 @@
  *
  * \author  Peter Zimmer <peter-zimmer@gmx.net>
  * \author  Micha Pfeiffer <ueczz@student.kit.edu>
+ * \author  Robin Andlauer <robin.andlauer@student.kit.edu
  * \date    2015-11-24
+ * 
+ * \author  Simon Roesler <simon.roesler@student.kit.edu>
+ * \date    2018
+ * 
+ * \author  Mark Hueneberg <hueneber@fzi.de>
+ * \date    2018
  *
  */
 //----------------------------------------------------------------------
@@ -30,6 +37,9 @@
 
 #define DEPTH_IMAGE_HEIGHT 240
 #define DEPTH_IMAGE_WIDTH 320
+
+// #define USE_CUDA
+
 namespace oadrive {
 namespace util {
 /*!
@@ -48,6 +58,7 @@ public:
      * \return Birdview Image
      */
   cv::Mat transform(cv::Mat image);
+  
   /*!
     * \brief loadConfig Read Calibration File with WarpMatrix
     * \param path Path to Calibration File (Hint: Warp Matrix ist not the camera calibration from OPENCV)
@@ -60,6 +71,13 @@ public:
 
   //! return camera matrix which was read from config file
   cv::Mat getCameraMatrix();
+
+  /*!
+    * \brief transforms pixels of the camera image to pixels of the birdview
+    * \param pixel vector of the camera image
+    * \return pixel vector of the birdview
+    */
+  std::vector<cv::Point2f> transformPixels(const std::vector<cv::Point2f> imagePixel);
 
 private:
   //!Enable undistort during transform
@@ -75,6 +93,7 @@ private:
 
   //! size of the picture
   cv::Size mImgSize;
+  float mBirdviewScale = 1.0;
 
   //! Path to the complete calibration FIle
   std::string mCompleteCalFile;
